@@ -12,6 +12,8 @@ func log(_ message: String) {
 /// Reads the Siri Remote (buttons via HID, touch surface via MultitouchSupport) and runs the mapped actions.
 final class Remote: ObservableObject {
     static let shared = Remote()
+    /// Input Monitoring only takes effect for a process started after it was granted.
+    static let launchedWithInputMonitoring = Permissions.inputMonitoring
 
     @Published var config = Config.load() { didSet { config.save() } }
     @Published var lastButton: RemoteButton?
@@ -39,6 +41,7 @@ final class Remote: ObservableObject {
     }
 
     func start() {
+        _ = Remote.launchedWithInputMonitoring  // capture at launch
         // Only the buttons interface; the touch surface is read through MultitouchSupport.
         IOHIDManagerSetDeviceMatching(hid, [
             kIOHIDVendorIDKey: remoteVendorID, kIOHIDProductIDKey: remoteProductID,

@@ -694,6 +694,7 @@ struct SetupPane: View {
                 HStack {
                     Button("Reconnect Remote") { remote.reconnect() }
                     Button("Restart TinyRemote") { Updater.relaunch() }
+                    Button("Run Setup Again") { Onboarding.restart() }
                     Button("Show Log") { NSWorkspace.shared.open(URL(fileURLWithPath: NSHomeDirectory() + "/Library/Logs/TinyRemote.log")) }
                 }
                 Text("If the remote shows as connected in Bluetooth but nothing happens here when you press a button, use Reconnect Remote. TinyRemote also reconnects automatically after sleep.")

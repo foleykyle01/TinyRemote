@@ -61,7 +61,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Remote.shared.start()
         Updater.shared.schedule()
         Dock.apply()
-        if !Permissions.allGranted { SettingsWindow.show(.setup) }
+        if Onboarding.shouldShow {
+            OnboardingWindow.show()
+        } else if !Permissions.allGranted {
+            SettingsWindow.show(.setup)
+        }
     }
 
     /// Opening TinyRemote again (Finder, Spotlight, Dock) shows Settings, the way back when the
@@ -139,7 +143,8 @@ enum SettingsWindow {
 /// Dock icon: always when "Show in the Dock" is on, otherwise only while Settings is open.
 enum Dock {
     static func apply() {
-        NSApp.setActivationPolicy(Remote.shared.config.showInDock || SettingsWindow.isOpen ? .regular : .accessory)
+        let windowOpen = SettingsWindow.isOpen || OnboardingWindow.isOpen
+        NSApp.setActivationPolicy(Remote.shared.config.showInDock || windowOpen ? .regular : .accessory)
     }
 }
 
@@ -149,13 +154,16 @@ extension AppDelegate {
     func snapshot(to directory: String) {
         Config.readOnly = true
         SettingsWindow.enabled = false
+        OnboardingWindow.enabled = false
         Remote.shared.connected = true  // show the ready state in docs; snapshot mode doesn't attach to the remote
         try? FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
-        for pane in Pane.allCases {
-            Navigation.shared.pane = pane
-            let window = NSWindow(contentRect: NSRect(x: -20000, y: 0, width: 980, height: 820), styleMask: [.titled], backing: .buffered, defer: false)
+        let pages: [(String, AnyView, NSSize)] = Pane.allCases.map { ($0.rawValue, AnyView(SettingsView()), NSSize(width: 980, height: 820)) }
+            + OnboardingView.Step.allCases.map { ("Onboarding \($0.rawValue + 1)", AnyView(OnboardingView(fixedStep: $0)), NSSize(width: 600, height: 540)) }
+        for (name, view, size) in pages {
+            if let pane = Pane(rawValue: name) { Navigation.shared.pane = pane }
+            let window = NSWindow(contentRect: NSRect(origin: NSPoint(x: -20000, y: 0), size: size), styleMask: [.titled], backing: .buffered, defer: false)
             window.appearance = NSAppearance(named: .darkAqua)
-            window.contentView = NSHostingView(rootView: SettingsView())
+            window.contentView = NSHostingView(rootView: view)
             window.orderFrontRegardless()  // off-screen, but composited so the window server can capture it
             RunLoop.main.run(until: Date().addingTimeInterval(0.8))  // let SwiftUI settle
             // CGWindowListCreateImage is marked unavailable for new code but still works for our own windows.
@@ -163,7 +171,7 @@ extension AppDelegate {
             let capture = unsafeBitCast(dlsym(dlopen(nil, RTLD_NOW), "CGWindowListCreateImage"), to: Capture.self)
             guard let image = capture(.null, CGWindowListOption.optionIncludingWindow.rawValue, CGWindowID(window.windowNumber),
                                       CGWindowImageOption([.boundsIgnoreFraming, .bestResolution]).rawValue)?.takeRetainedValue() else { continue }
-            try? NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: "\(directory)/\(pane.rawValue).png"))
+            try? NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: "\(directory)/\(name).png"))
             window.close()
         }
         exit(0)

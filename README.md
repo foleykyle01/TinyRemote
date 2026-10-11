@@ -75,13 +75,13 @@ This installs TinyRemote into `~/Applications`, replaces any older copy and open
 
 ### First launch
 
-TinyRemote opens its **Setup** page and walks you through:
+A short welcome guide walks you through it:
 
-1. **Input Monitoring**, to read the remote. macOS asks TinyRemote to restart afterwards.
-2. **Accessibility**, to send shortcuts, clicks and cursor movement.
-3. **Pairing the remote**, if it isn't connected yet.
+1. **Allow access:** Input Monitoring (to read the remote) and Accessibility (to send shortcuts, clicks and cursor movement). TinyRemote offers a restart when macOS needs one.
+2. **Connect your remote:** pairing steps, with a live check that it's connected.
+3. **Give it a try:** press buttons and use the clickpad to see it working.
 
-TinyRemote opens at login by default. You can change that in **General**.
+TinyRemote then lives in the menu bar and opens at login (you can change both in **General**). To see the guide again, use **Setup → Run Setup Again**.
 
 ## Updates
 
