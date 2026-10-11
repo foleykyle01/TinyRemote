@@ -1,12 +1,13 @@
 import SwiftUI
 
 enum Pane: String, CaseIterable, Identifiable {
-    case buttons = "Buttons", touch = "Touch Surface", shortcuts = "My Shortcuts", general = "General", setup = "Setup"
+    case buttons = "Buttons", touch = "Touch Surface", voice = "Voice", shortcuts = "My Shortcuts", general = "General", setup = "Setup"
     var id: String { rawValue }
     var icon: String {
         switch self {
         case .buttons: "appletvremote.gen4"
         case .touch: "hand.point.up.left"
+        case .voice: "mic"
         case .shortcuts: "command"
         case .general: "gearshape"
         case .setup: "checkmark.shield"
@@ -31,6 +32,7 @@ struct SettingsView: View {
             switch navigation.pane ?? .buttons {
             case .buttons: ButtonsPane()
             case .touch: TouchPane()
+            case .voice: VoicePane()
             case .shortcuts: ShortcutsPane()
             case .general: GeneralPane()
             case .setup: SetupPane()

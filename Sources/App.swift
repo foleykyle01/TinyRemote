@@ -20,6 +20,14 @@ struct TinyRemoteApp: App {
         assert(Actions.title("ctrl+shift+space") == "⌃⇧Space" && Actions.title("cmd+opt+k") == "⌥⌘K")
         Remote.shared.config.customActions = [CustomAction(id: "t", name: "Dictate", value: "ctrl+shift+space")]
         assert(Actions.title("custom:t") == "Dictate" && Actions.title("custom:gone") == "Deleted shortcut")
+        var voice = VoiceSettings(shortcut: "ctrl+shift+space")
+        assert(voice.mapping == Mapping(press: "ctrl+shift+space", release: "ctrl+shift+space"))
+        voice.micStyle = .tapToToggle
+        assert(voice.mapping == Mapping(press: "ctrl+shift+space"))
+        voice.appMode = .hold
+        assert(voice.mapping == Mapping(press: "hold:ctrl+shift+space") && Actions.isHeld(voice.mapping.press))
+        assert(Actions.title("hold:ctrl+shift+space") == "Hold ⌃⇧Space" && !Actions.isHeld("double-click"))
+        assert(VoiceSettings().mapping == Mapping())
         var config = Config()
         config.buttons[.mute] = Mapping(press: "mute")
         let json = try! JSONEncoder().encode(config)

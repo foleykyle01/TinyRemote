@@ -119,6 +119,7 @@ enum Actions {
     static func title(_ action: String) -> String {
         if action.isEmpty { return "—" }
         if action.hasPrefix("custom:") { return custom(action)?.name ?? "Deleted shortcut" }
+        if action.hasPrefix("hold:") { return "Hold " + title(String(action.dropFirst(5))) }
         if let named = (named + presets).first(where: { $0.id == action }) { return named.title }
         var parts = action.split(separator: "+").map(String.init)
         let key = parts.popLast() ?? ""
@@ -127,14 +128,18 @@ enum Actions {
         return symbols + (keySymbols[key] ?? key.uppercased())
     }
 
-    /// Whether the action has a held state (key/mouse down until the button is released).
-    static func isHoldable(_ action: String) -> Bool { parseShortcut(action) != nil || action.hasSuffix("-click") }
+    /// Actions that stay down while the button is held: clicks (for dragging) and "hold:<action>"
+    /// (keeps a shortcut pressed, for push-to-talk apps).
+    static func isHeld(_ action: String) -> Bool {
+        action.hasPrefix("hold:") || (action.hasSuffix("-click") && action != "double-click")
+    }
 
     static var leftButtonDown = false
 
     static func perform(_ action: String, down: Bool) {
         switch action {
         case "": return
+        case _ where action.hasPrefix("hold:"): perform(String(action.dropFirst(5)), down: down)
         case _ where action.hasPrefix("custom:"):
             guard let custom = custom(action) else { return }
             switch custom.kind {

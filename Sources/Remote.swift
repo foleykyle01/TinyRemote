@@ -147,8 +147,8 @@ final class Remote: ObservableObject {
                     self?.holds[button]?.pendingClick = false
                     Actions.tap(binding.longPress)
                 })
-            } else if binding.press.hasSuffix("-click") {
-                Actions.perform(binding.press, down: true)  // held so the trackpad can drag
+            } else if Actions.isHeld(binding.press) {
+                Actions.perform(binding.press, down: true)  // held until release: drags, push-to-talk keys
                 hold.clickHeld = true
             } else {
                 Actions.tap(binding.press)
@@ -168,6 +168,15 @@ final class Remote: ObservableObject {
                 Actions.tap(binding.press)
             }
             Actions.tap(binding.release)
+        }
+    }
+
+    /// Presses a button as if on the remote (Voice page's Test).
+    func simulatePress(_ button: RemoteButton, holdFor seconds: TimeInterval, completion: @escaping () -> Void) {
+        self.button(button, down: true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds) {
+            self.button(button, down: false)
+            completion()
         }
     }
 

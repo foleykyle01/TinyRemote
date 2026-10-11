@@ -106,6 +106,7 @@ struct Config: Codable, Equatable {
     var scrollSpeed = 1.0
     var autoUpdate = true
     var customActions: [CustomAction] = []
+    var voice = VoiceSettings()
 
     static let defaultGestures: [Gesture: String] = [.tap: "left-click", .twoFingerTap: "right-click", .twoFingerClick: "right-click"]
 
