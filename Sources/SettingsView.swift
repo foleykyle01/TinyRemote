@@ -90,6 +90,12 @@ struct TouchPane: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
+                Card(title: "Scrolling") {
+                    toggleRow("Swipe with two fingers", $remote.config.twoFingerScrollEnabled)
+                    toggleRow("Circle the outer ring (like an iPod)", $remote.config.ringScrollEnabled)
+                    speedRow("Speed", $remote.config.scrollSpeed)
+                        .disabled(!remote.config.twoFingerScrollEnabled && !remote.config.ringScrollEnabled)
+                }
                 Card(title: "Cursor") {
                     toggleRow("Move the cursor with one finger", $remote.config.trackpadEnabled)
                     speedRow("Speed", $remote.config.cursorSpeed).disabled(!remote.config.trackpadEnabled)
@@ -118,12 +124,6 @@ struct TouchPane: View {
                         touchRow(gesture.icon, gesture.title, gesture.detail, self.gesture(gesture), Config.defaultGestures[gesture] ?? "")
                         if gesture == .twoFingerTap { Divider() }
                     }
-                }
-                Card(title: "Scrolling") {
-                    toggleRow("Swipe with two fingers", $remote.config.twoFingerScrollEnabled)
-                    toggleRow("Circle the outer ring (like an iPod)", $remote.config.ringScrollEnabled)
-                    speedRow("Speed", $remote.config.scrollSpeed)
-                        .disabled(!remote.config.twoFingerScrollEnabled && !remote.config.ringScrollEnabled)
                 }
             }
             .padding(24)
