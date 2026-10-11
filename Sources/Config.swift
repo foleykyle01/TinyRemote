@@ -57,6 +57,7 @@ struct Config: Codable, Equatable {
     var buttons: [RemoteButton: Mapping] = Config.defaultButtons
     var longPressMs = 500.0
     var trackpadEnabled = true
+    var tapToClick = true
     var cursorSpeed = 1.0
     var ringScrollEnabled = true
     var scrollSpeed = 1.0

@@ -77,6 +77,7 @@ final class Remote: ObservableObject {
         log("\(button) \(down ? "down" : "up") accessibility=\(AXIsProcessTrusted())")
         if down {
             lastButton = button
+            buttonDuringTouch = true
             var hold = Hold()
             if !binding.longPress.isEmpty {
                 hold.timers.append(.scheduledTimer(withTimeInterval: config.longPressMs / 1000, repeats: false) { [weak self] _ in
@@ -86,6 +87,7 @@ final class Remote: ObservableObject {
             } else if binding.press.hasSuffix("-click") {
                 Actions.perform(binding.press, down: true)  // held so the trackpad can drag
                 hold.clickHeld = true
+                dragTravel = 0
             } else {
                 Actions.tap(binding.press)
                 if button.repeatsWhileHeld && Actions.parseShortcut(binding.press) != nil {
@@ -114,10 +116,25 @@ final class Remote: ObservableObject {
     private var lastPoint = CGPoint.zero
     private var lastAngle = 0.0
     private var scrollRemainder = 0.0
+    private var touchStart = Date()
+    private var touchTravel = 0.0
+    private var buttonDuringTouch = false
+    /// Finger travel since the click went down; pressing the clickpad nudges the finger, so ignore small moves.
+    private var dragTravel = 0.0
+    private let dragDeadZone = 0.06
 
     /// `point` is the first touching finger in normalized pad coordinates (origin bottom-left), or nil on lift.
     private func touch(_ point: CGPoint?) {
-        guard config.trackpadEnabled, let point else { touchMode = .none; return }
+        guard config.trackpadEnabled else { touchMode = .none; return }
+        guard let point else {
+            // A quick, still touch in the middle is a tap; skip it if a button was physically pressed.
+            if touchMode == .cursor, config.tapToClick, !buttonDuringTouch,
+               Date().timeIntervalSince(touchStart) < 0.25, touchTravel < 0.04 {
+                Actions.tap("left-click")
+            }
+            touchMode = .none
+            return
+        }
         let angle = atan2(point.y - 0.5, point.x - 0.5)
         defer { lastPoint = point; lastAngle = angle }
         if touchMode == .none {
@@ -125,11 +142,19 @@ final class Remote: ObservableObject {
             let onRing = hypot(point.x - 0.5, point.y - 0.5) > 0.38
             touchMode = config.ringScrollEnabled && onRing ? .scroll : .cursor
             scrollRemainder = 0
+            touchStart = Date()
+            touchTravel = 0
+            buttonDuringTouch = false
             return
         }
         switch touchMode {
         case .cursor:
             let dx = point.x - lastPoint.x, dy = lastPoint.y - point.y
+            touchTravel += hypot(dx, dy)
+            if Actions.leftButtonDown {
+                dragTravel += hypot(dx, dy)
+                if dragTravel < dragDeadZone { return }
+            }
             // ponytail: fixed accel curve; tune or make it a setting if it feels off.
             let gain = 900 * config.cursorSpeed * (1 + min(hypot(dx, dy) * 40, 3))
             moveCursor(by: CGVector(dx: dx * gain, dy: dy * gain))

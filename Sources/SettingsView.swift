@@ -128,6 +128,7 @@ struct TrackpadPane: View {
             Section {
                 Toggle("Move the cursor with the touch surface", isOn: $remote.config.trackpadEnabled)
                 LabeledContent("Cursor speed") { Slider(value: $remote.config.cursorSpeed, in: 0.3...3) }
+                Toggle("Tap to click", isOn: $remote.config.tapToClick)
             }
             Section {
                 Toggle("Circle the outer ring to scroll", isOn: $remote.config.ringScrollEnabled)
@@ -137,7 +138,6 @@ struct TrackpadPane: View {
             }
         }
         .formStyle(.grouped)
-        .disabled(false)
         .navigationTitle("Trackpad")
     }
 }
