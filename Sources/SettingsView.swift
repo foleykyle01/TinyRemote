@@ -34,48 +34,69 @@ struct SettingsView: View {
             case .setup: SetupPane()
             }
         }
-        .frame(minWidth: 860, minHeight: 680)
+        .frame(minWidth: 980, minHeight: 720)
         .onAppear { NSApp.activate() }
     }
 }
 
 // MARK: - Remote (pointer + per-button bindings)
 
+/// A titled rounded panel; used instead of Form so custom rows keep their layout.
+struct Card<Content: View>: View {
+    let title: String
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title).font(.headline).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 14) { content }
+                .padding(18)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+        }
+    }
+}
+
 struct RemotePane: View {
     @ObservedObject private var remote = Remote.shared
     @State private var selected = RemoteButton.tv
 
     var body: some View {
-        Form {
-            Section("Pointer") {
-                Toggle("Move the cursor with the touch surface", isOn: $remote.config.trackpadEnabled)
-                LabeledContent("Cursor speed") {
-                    Slider(value: $remote.config.cursorSpeed, in: 0.3...3)
-                    Text(String(format: "%.2fx", remote.config.cursorSpeed)).monospacedDigit().frame(width: 48, alignment: .trailing)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                Card(title: "Pointer") {
+                    toggleRow("Move the cursor with the touch surface", $remote.config.trackpadEnabled)
+                    speedRow("Cursor speed", $remote.config.cursorSpeed)
+                    toggleRow("Tap to click", $remote.config.tapToClick)
+                    toggleRow("Circle the outer ring to scroll", $remote.config.ringScrollEnabled)
+                    speedRow("Scroll speed", $remote.config.scrollSpeed)
                 }
-                Toggle("Tap to click", isOn: $remote.config.tapToClick)
-                Toggle("Circle the outer ring to scroll", isOn: $remote.config.ringScrollEnabled)
-                LabeledContent("Scroll speed") {
-                    Slider(value: $remote.config.scrollSpeed, in: 0.3...3)
-                    Text(String(format: "%.2fx", remote.config.scrollSpeed)).monospacedDigit().frame(width: 48, alignment: .trailing)
+                Card(title: "Button bindings") {
+                    HStack(alignment: .top, spacing: 36) {
+                        RemoteDrawing(selected: $selected)
+                        ButtonEditor(button: $selected)
+                    }
+                    Text("Click a button on the drawing or press it on your remote. Two fingers on the touch surface also scroll.")
+                        .font(.callout).foregroundStyle(.secondary)
                 }
             }
-            Section {
-                HStack(alignment: .top, spacing: 32) {
-                    RemoteDrawing(selected: $selected)
-                    ButtonEditor(button: $selected)
-                }
-                .padding(.vertical, 8)
-            } header: {
-                Text("Button bindings")
-            } footer: {
-                Text("Click a button on the drawing or press it on your remote. Two fingers on the touch surface also scroll.")
-                    .foregroundStyle(.secondary)
-            }
+            .padding(24)
         }
-        .formStyle(.grouped)
         .navigationTitle("Remote")
         .onChange(of: remote.lastButton) { if let button = remote.lastButton { selected = button } }
+    }
+
+    private func toggleRow(_ title: String, _ isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) { Text(title).frame(maxWidth: .infinity, alignment: .leading) }
+            .toggleStyle(.switch)
+    }
+
+    private func speedRow(_ title: String, _ value: Binding<Double>) -> some View {
+        HStack(spacing: 12) {
+            Text(title).frame(width: 110, alignment: .leading)
+            Slider(value: value, in: 0.3...3)
+            Text(String(format: "%.2fx", value.wrappedValue)).monospacedDigit().foregroundStyle(.secondary).frame(width: 48, alignment: .trailing)
+        }
     }
 }
 
@@ -87,7 +108,7 @@ struct RemoteDrawing: View {
         ZStack(alignment: .topTrailing) {
             RoundedRectangle(cornerRadius: 38)
                 .fill(LinearGradient(colors: [Color(white: 0.88), Color(white: 0.72)], startPoint: .top, endPoint: .bottom))
-                .frame(width: 210, height: 500)
+                .frame(width: 210, height: 540)
             control(.mic, systemImage: nil, shape: Capsule(), width: 6, height: 52)
                 .offset(x: 3, y: 150)
             VStack(spacing: 18) {
@@ -115,7 +136,7 @@ struct RemoteDrawing: View {
             .padding(.top, 18)
             .frame(width: 210)
         }
-        .frame(width: 216, height: 500)
+        .frame(width: 216, height: 540)
     }
 
     private var clickpad: some View {
@@ -158,32 +179,32 @@ struct ButtonEditor: View {
     @ObservedObject private var remote = Remote.shared
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 18) {
             Picker("Button", selection: $button) {
                 ForEach(RemoteButton.allCases) { Text($0.title).tag($0) }
             }
             .labelsHidden()
-            .frame(width: 220)
-            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 14) {
-                row("Press", \.press)
-                row("Release", \.release)
-                row("Long press", \.longPress)
-                GridRow {
-                    Text("Long press after")
-                    HStack {
-                        TextField("ms", value: longPressMs, format: .number)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 80)
-                        Text("ms").foregroundStyle(.secondary)
-                    }
-                    Button {
-                        remote.config.buttons[button, default: Mapping()].longPressMs = nil
-                    } label: { Label("Default", systemImage: "arrow.counterclockwise") }
-                        .buttonStyle(.borderless)
-                        .disabled(mapping.longPressMs == nil)
-                }
+            .fixedSize()
+            .font(.title3)
+            row("Press", \.press)
+            row("Release", \.release)
+            row("Long press", \.longPress)
+            HStack(spacing: 10) {
+                Text("Long press after").foregroundStyle(.secondary)
+                TextField("", value: longPressMs, format: .number)
+                    .labelsHidden()
+                    .textFieldStyle(.roundedBorder)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 70)
+                Text("ms").foregroundStyle(.secondary)
+                Button {
+                    remote.config.buttons[button, default: Mapping()].longPressMs = nil
+                } label: { Label("Default", systemImage: "arrow.counterclockwise") }
+                    .labelStyle(.titleAndIcon)
+                    .buttonStyle(.borderless)
+                    .disabled(mapping.longPressMs == nil)
             }
-            Text("Press runs when the button goes down (or on release if a long press is set). Release runs when you let go — useful for push-to-talk dictation.")
+            Text("Press runs when the button goes down, or on release if a long press is set. Release runs when you let go, which suits push-to-talk dictation.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -199,17 +220,16 @@ struct ButtonEditor: View {
     }
 
     private func row(_ title: String, _ field: WritableKeyPath<Mapping, String>) -> some View {
-        let defaultValue = Config.defaultButtons[button, default: Mapping()][keyPath: field]
-        return GridRow {
-            Text(title)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).foregroundStyle(.secondary)
             ActionField(action: Binding(get: { mapping[keyPath: field] },
                                         set: { remote.config.buttons[button, default: Mapping()][keyPath: field] = $0 }),
-                        defaultAction: defaultValue)
+                        defaultAction: Config.defaultButtons[button, default: Mapping()][keyPath: field])
         }
     }
 }
 
-/// Shows an action with a picker (presets, saved shortcuts, actions), Capture, and Default.
+/// An action value (click for presets, saved shortcuts and actions), plus Capture and Default.
 struct ActionField: View {
     @Binding var action: String
     var defaultAction: String
@@ -217,8 +237,8 @@ struct ActionField: View {
     @StateObject private var recorder = ShortcutRecorder()
 
     var body: some View {
-        HStack(spacing: 10) {
-            Menu(recorder.isRecording ? "Type a shortcut…" : Actions.title(action)) {
+        HStack(spacing: 14) {
+            Menu {
                 if !remote.config.customActions.isEmpty {
                     Section("My shortcuts") {
                         ForEach(remote.config.customActions) { custom in Button(custom.name) { action = "custom:\(custom.id)" } }
@@ -227,43 +247,89 @@ struct ActionField: View {
                 Section("Shortcuts") {
                     ForEach(Actions.presets, id: \.id) { preset in Button(preset.title) { action = preset.id } }
                 }
-                Section("Actions") {
-                    ForEach(Actions.named, id: \.id) { named in Button(named.title) { action = named.id } }
+                ForEach(Actions.namedGroups, id: \.title) { group in
+                    Section(group.title) {
+                        ForEach(group.actions, id: \.id) { named in Button(named.title) { action = named.id } }
+                    }
                 }
                 Divider()
                 Button("None") { action = "" }
+            } label: {
+                HStack {
+                    Text(recorder.isRecording ? "Type a shortcut…" : (action.isEmpty ? "(none)" : Actions.title(action)))
+                        .foregroundStyle(action.isEmpty && !recorder.isRecording ? .secondary : .primary)
+                        .lineLimit(1)
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 10)
+                .frame(width: 220, height: 30)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 7))
+                .overlay(RoundedRectangle(cornerRadius: 7).stroke(recorder.isRecording ? Color.accentColor : .clear, lineWidth: 2))
+                .contentShape(Rectangle())
             }
-            .frame(width: 200)
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .fixedSize()
             Button {
                 recorder.toggle { action = $0 }
             } label: { Label(recorder.isRecording ? "Cancel" : "Capture", systemImage: "record.circle") }
-                .buttonStyle(.borderless)
             Button { action = defaultAction } label: { Label("Default", systemImage: "arrow.counterclockwise") }
-                .buttonStyle(.borderless)
                 .disabled(action == defaultAction)
         }
+        .labelStyle(.titleAndIcon)
+        .buttonStyle(.borderless)
     }
 }
 
-/// Captures the next key combo typed while the settings window is focused.
-/// ponytail: local monitor only; system-reserved combos (⌃←, ⌘Space) never reach it, so those are presets.
+/// Captures the next key combo system-wide, swallowing it so reserved shortcuts (⌃→, ⌘Space)
+/// can be recorded instead of firing. Falls back to window-only capture if the tap can't be created.
 final class ShortcutRecorder: ObservableObject {
     @Published var isRecording = false
+    private var onRecord: ((String) -> Void)?
+    private var tap: CFMachPort?
+    private var source: CFRunLoopSource?
     private var monitor: Any?
 
     func toggle(onRecord: @escaping (String) -> Void) {
         if isRecording { stop(); return }
+        self.onRecord = onRecord
         isRecording = true
-        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            onRecord(Actions.shortcutString(keyCode: event.keyCode, flags: event.modifierFlags))
-            self?.stop()
+        tap = CGEvent.tapCreate(tap: .cghidEventTap, place: .headInsertEventTap, options: .defaultTap,
+                                eventsOfInterest: CGEventMask(1 << CGEventType.keyDown.rawValue), callback: { _, type, event, context in
+            guard type == .keyDown, let context else { return Unmanaged.passUnretained(event) }
+            let recorder = Unmanaged<ShortcutRecorder>.fromOpaque(context).takeUnretainedValue()
+            let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
+            let shortcut = Actions.shortcutString(keyCode: keyCode, flags: NSEvent.ModifierFlags(rawValue: UInt(event.flags.rawValue)))
+            DispatchQueue.main.async { recorder.finish(shortcut) }
             return nil
+        }, userInfo: Unmanaged.passUnretained(self).toOpaque())
+        if let tap {
+            source = CFMachPortCreateRunLoopSource(nil, tap, 0)
+            CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+        } else {
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                self?.finish(Actions.shortcutString(keyCode: event.keyCode, flags: event.modifierFlags))
+                return nil
+            }
         }
     }
 
+    private func finish(_ shortcut: String) {
+        guard isRecording else { return }
+        onRecord?(shortcut)
+        stop()
+    }
+
     func stop() {
+        if let tap { CGEvent.tapEnable(tap: tap, enable: false) }
+        if let source { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }
         if let monitor { NSEvent.removeMonitor(monitor) }
+        tap = nil
+        source = nil
         monitor = nil
+        onRecord = nil
         isRecording = false
     }
 
@@ -442,10 +508,10 @@ struct SetupPane: View {
                 step("Accessibility", "Lets TinyRemote send shortcuts, clicks and cursor movement.", done: accessibility) {
                     Button("Grant…") { Permissions.requestAccessibility() }
                 }
-                step("Siri Remote connected", "Pair it in Bluetooth settings: hold Back and Volume + near the Mac for 5 seconds.", done: remote.connected) {
+                step("Siri Remote connected", remote.connected ? "Connected and ready." : "Pair it in Bluetooth settings: hold Back and Volume + near the Mac for 5 seconds.", done: remote.connected) {
                     Button("Bluetooth…") { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.BluetoothSettings")!) }
                 }
-                step("Exclusive access", "Another app (like GoatRemote) is holding the remote. Quit it and remove it from Login Items.", done: remote.exclusive || !remote.connected) {
+                step("Exclusive access", remote.exclusive ? "Only TinyRemote handles the remote, so macOS won't also react to Play or Volume." : "Another app (like GoatRemote) is holding the remote. Quit it and remove it from Login Items.", done: remote.exclusive || !remote.connected) {
                     Button("Retry") { remote.openHID() }
                 }
             } header: {

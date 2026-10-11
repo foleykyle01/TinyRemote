@@ -12,6 +12,11 @@ struct TinyRemoteApp: App {
         assert(Actions.parseShortcut("cmd+key105")!.key == 105)
         assert(Actions.parseShortcut("hyper+x") == nil && Actions.parseShortcut("left-click") == nil)
         assert(Actions.shortcutString(keyCode: 49, flags: [.control, .shift]) == "ctrl+shift+space")
+        assert(Actions.parseShortcut("ctrl+fn+right")!.flags.contains([.maskControl, .maskSecondaryFn]))  // GoatRemote style
+        assert(Actions.parseShortcut("command+shift+5")! == (23, [.maskCommand, .maskShift]))
+        assert(Actions.parseShortcut("cmd")! == (55, []) && Actions.parseShortcut("f20")!.key == 90)
+        assert(Actions.parseShortcut("num5")!.flags.contains(.maskNumericPad) && Actions.parseShortcut("f")!.flags.isEmpty)
+        assert(Actions.parseShortcut("eject") == nil && Actions.title("eject") == "Eject")
         assert(Actions.title("ctrl+shift+space") == "⌃⇧Space" && Actions.title("cmd+opt+k") == "⌥⌘K")
         Remote.shared.config.customActions = [CustomAction(id: "t", name: "Dictate", value: "ctrl+shift+space")]
         assert(Actions.title("custom:t") == "Dictate" && Actions.title("custom:gone") == "Deleted shortcut")
@@ -33,6 +38,7 @@ struct TinyRemoteApp: App {
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if let index = CommandLine.arguments.firstIndex(of: "--snapshot") { return snapshot(to: CommandLine.arguments[index + 1]) }
         freopen(NSHomeDirectory() + "/Library/Logs/TinyRemote.log", "a", stderr)
         log("TinyRemote \(Updater.shared.current) started")
         LoginItem.enableOnFirstLaunch()
@@ -74,5 +80,30 @@ struct MenuContent: View {
         Navigation.shared.pane = pane
         openWindow(id: "settings")
         NSApp.activate()
+    }
+}
+
+extension AppDelegate {
+    /// Dev tool: renders each settings pane to PNG (dark mode) without screen-recording permission.
+    /// Usage: TinyRemote --snapshot /tmp/shots
+    func snapshot(to directory: String) {
+        Config.readOnly = true
+        try? FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+        for pane in Pane.allCases {
+            Navigation.shared.pane = pane
+            let window = NSWindow(contentRect: NSRect(x: -20000, y: 0, width: 980, height: 820), styleMask: [.titled], backing: .buffered, defer: false)
+            window.appearance = NSAppearance(named: .darkAqua)
+            window.contentView = NSHostingView(rootView: SettingsView())
+            window.orderFrontRegardless()  // off-screen, but composited so the window server can capture it
+            RunLoop.main.run(until: Date().addingTimeInterval(0.8))  // let SwiftUI settle
+            // CGWindowListCreateImage is marked unavailable for new code but still works for our own windows.
+            typealias Capture = @convention(c) (CGRect, UInt32, UInt32, UInt32) -> Unmanaged<CGImage>?
+            let capture = unsafeBitCast(dlsym(dlopen(nil, RTLD_NOW), "CGWindowListCreateImage"), to: Capture.self)
+            guard let image = capture(.null, CGWindowListOption.optionIncludingWindow.rawValue, CGWindowID(window.windowNumber),
+                                      CGWindowImageOption([.boundsIgnoreFraming, .bestResolution]).rawValue)?.takeRetainedValue() else { continue }
+            try? NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: "\(directory)/\(pane.rawValue).png"))
+            window.close()
+        }
+        exit(0)
     }
 }

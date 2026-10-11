@@ -6,12 +6,37 @@ enum Actions {
     static let named: [(id: String, title: String)] = [
         ("left-click", "Left click"),
         ("right-click", "Right click"),
+        ("double-click", "Double click"),
         ("play-pause", "Play / Pause"),
         ("next-track", "Next track"),
         ("previous-track", "Previous track"),
+        ("fast-forward", "Fast forward"),
+        ("rewind", "Rewind"),
         ("volume-up", "Volume up"),
         ("volume-down", "Volume down"),
         ("mute", "Mute"),
+        ("brightness-up", "Display brightness up"),
+        ("brightness-down", "Display brightness down"),
+        ("keyboard-brightness-up", "Keyboard brightness up"),
+        ("keyboard-brightness-down", "Keyboard brightness down"),
+        ("keyboard-brightness-toggle", "Keyboard backlight on/off"),
+        ("eject", "Eject"),
+        ("mission-control", "Mission Control (app)"),
+        ("launchpad", "Launchpad / Apps"),
+    ]
+
+    static var namedGroups: [(title: String, actions: [(id: String, title: String)])] {
+        let mouse = named.filter { $0.id.hasSuffix("-click") }
+        let media = named.filter { ["play-pause", "next-track", "previous-track", "fast-forward", "rewind", "volume-up", "volume-down", "mute"].contains($0.id) }
+        let system = named.filter { action in !(mouse + media).contains { $0.id == action.id } }
+        return [("Mouse", mouse), ("Media", media), ("System", system)]
+    }
+
+    /// NX_KEYTYPE_* codes for media/system keys, sent like a real keyboard's top row.
+    private static let mediaKeys: [String: Int] = [
+        "volume-up": 0, "volume-down": 1, "brightness-up": 2, "brightness-down": 3, "mute": 7, "eject": 14,
+        "play-pause": 16, "next-track": 17, "previous-track": 18, "fast-forward": 19, "rewind": 20,
+        "keyboard-brightness-up": 21, "keyboard-brightness-down": 22, "keyboard-brightness-toggle": 23,
     ]
 
     /// Shortcut presets shown in the picker; they're plain shortcuts, so users can record their own.
@@ -21,6 +46,10 @@ enum Actions {
         ("ctrl+up", "Mission Control"),
         ("ctrl+down", "App windows"),
         ("cmd+tab", "Switch app"),
+        ("cmd+space", "Spotlight"),
+        ("cmd+shift+5", "Screenshot"),
+        ("cmd+w", "Close window"),
+        ("cmd+q", "Quit app"),
         ("return", "Return"),
         ("escape", "Escape"),
         ("delete", "Delete"),
@@ -36,24 +65,38 @@ enum Actions {
         "f1": 122, "f2": 120, "f3": 99, "f4": 118, "f5": 96, "f6": 97, "f7": 98, "f8": 100, "f9": 101,
         "f10": 109, "f11": 103, "f12": 111, "home": 115, "pageup": 116, "forwarddelete": 117, "end": 119,
         "pagedown": 121, "left": 123, "right": 124, "down": 125, "up": 126,
+        "f13": 105, "f14": 107, "f15": 113, "f16": 106, "f17": 64, "f18": 79, "f19": 80, "f20": 90,
+        "capslock": 57, "help": 114, "section": 10,
+        "num0": 82, "num1": 83, "num2": 84, "num3": 85, "num4": 86, "num5": 87, "num6": 88, "num7": 89, "num8": 91, "num9": 92,
+        "num.": 65, "num*": 67, "num+": 69, "numclear": 71, "num/": 75, "numenter": 76, "num-": 78, "num=": 81,
+        "yen": 93, "jisunderscore": 94, "eisu": 102, "kana": 104,
     ]
     static let keyNames = Dictionary(keyCodes.map { ($1, $0) }, uniquingKeysWith: { a, _ in a })
-    static let modifiers: [(name: String, flag: CGEventFlags, symbol: String, key: CGKeyCode)] = [
-        ("ctrl", .maskControl, "⌃", 59), ("opt", .maskAlternate, "⌥", 58), ("shift", .maskShift, "⇧", 56), ("cmd", .maskCommand, "⌘", 55),
+    /// fn is flag-only: pressing the real fn/Globe key can trigger dictation or the emoji picker.
+    static let modifiers: [(name: String, flag: CGEventFlags, symbol: String, key: CGKeyCode?)] = [
+        ("fn", .maskSecondaryFn, "fn ", nil), ("ctrl", .maskControl, "⌃", 59), ("opt", .maskAlternate, "⌥", 58),
+        ("shift", .maskShift, "⇧", 56), ("cmd", .maskCommand, "⌘", 55),
     ]
+    private static let modifierAliases = ["alt": "opt", "option": "opt", "control": "ctrl", "command": "cmd"]
 
     static func parseShortcut(_ action: String) -> (key: CGKeyCode, flags: CGEventFlags)? {
         var parts = action.lowercased().split(separator: "+").map(String.init)
         guard let keyName = parts.popLast() else { return nil }
         var flags: CGEventFlags = []
         for part in parts {
-            guard let modifier = modifiers.first(where: { $0.name == part || (part == "alt" && $0.name == "opt") }) else { return nil }
+            let name = modifierAliases[part] ?? part
+            guard let modifier = modifiers.first(where: { $0.name == name }) else { return nil }
             flags.insert(modifier.flag)
+        }
+        // A lone modifier ("cmd") taps just that key.
+        if parts.isEmpty, let modifier = modifiers.first(where: { $0.name == (modifierAliases[keyName] ?? keyName) }), let key = modifier.key {
+            return (key, [])
         }
         guard let key = keyCodes[keyName] ?? (keyName.hasPrefix("key") ? CGKeyCode(keyName.dropFirst(3)) : nil) else { return nil }
         // Arrow and function keys carry these flags on real keyboards; Spaces switching ignores them otherwise.
         if (123...126).contains(key) { flags.formUnion([.maskSecondaryFn, .maskNumericPad]) }
-        if key >= 96 && key <= 122 && keyName.hasPrefix("f") { flags.insert(.maskSecondaryFn) }
+        if (2...3).contains(keyName.count) && keyName.hasPrefix("f") && keyName.dropFirst().allSatisfy(\.isNumber) { flags.insert(.maskSecondaryFn) }
+        if keyName.hasPrefix("num") { flags.insert(.maskNumericPad) }
         return (key, flags)
     }
 
@@ -100,18 +143,18 @@ enum Actions {
             }
         case "left-click": mouse(down ? .leftMouseDown : .leftMouseUp, .left); leftButtonDown = down
         case "right-click": mouse(down ? .rightMouseDown : .rightMouseUp, .right)
-        case "play-pause": media(16, down: down)
-        case "next-track": media(17, down: down)
-        case "previous-track": media(18, down: down)
-        case "volume-up": media(0, down: down)
-        case "volume-down": media(1, down: down)
-        case "mute": media(7, down: down)
+        case "double-click":
+            guard down else { return }
+            for _ in 0..<2 { mouse(.leftMouseDown, .left); mouse(.leftMouseUp, .left) }
+        case "mission-control": if down { openApp(["/System/Applications/Mission Control.app"]) }
+        case "launchpad": if down { openApp(["/System/Applications/Launchpad.app", "/System/Applications/Apps.app"]) }
+        case _ where mediaKeys[action] != nil: media(mediaKeys[action]!, down: down)
         default:
             guard let (key, flags) = parseShortcut(action) else { return }
             // Press and release modifiers as their own keys, like a real keyboard. Putting the flags
             // only on the key event leaves macOS believing they're still held, so later clicks
             // become Ctrl-clicks (right-clicks).
-            let used = modifiers.filter { flags.contains($0.flag) }
+            let used = modifiers.compactMap { modifier in modifier.key.map { (key: $0, flag: modifier.flag) } }.filter { flags.contains($0.flag) }
             var held = CGEventFlags()
             if down {
                 for modifier in used { held.insert(modifier.flag); postKey(modifier.key, down: true, flags: held) }
@@ -128,6 +171,11 @@ enum Actions {
         perform(action, down: true)
         usleep(15_000)
         perform(action, down: false)
+    }
+
+    private static func openApp(_ candidates: [String]) {
+        guard let path = candidates.first(where: FileManager.default.fileExists) else { return }
+        NSWorkspace.shared.open(URL(fileURLWithPath: path))
     }
 
     /// Runs off the main thread so a slow script can't stall the remote.
