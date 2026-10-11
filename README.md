@@ -24,6 +24,7 @@
 ## What it does
 
 - **Every button is remappable.** Press, release and long press for each button, each with its own hold time. Pick from presets, capture any shortcut (including reserved ones like ⌃→ and ⌘Space), or run an AppleScript.
+- **App-aware.** Profiles change buttons per app. In Safari, Chrome and other browsers, Back goes back a page and a long press goes forward. In every other app Back stays Delete, and it also stays Delete while you're typing in a browser's text field. Create profiles for any app.
 - **Trackpad that behaves like one.** Move the cursor, tap or click to select, press and slide to drag, and press and hold still for a right click. That works one-handed with your thumb.
 - **Scrolling.** Swipe with two fingers, or circle the outer ring like an iPod.
 - **Push-to-talk dictation.** Pick your dictation app (FluidVoice, Wispr Flow, superwhisper, VoiceInk, MacWhisper, Apple Dictation or any other). TinyRemote reads FluidVoice's shortcut for you and sets up the mic button as hold-to-talk or tap-to-toggle.

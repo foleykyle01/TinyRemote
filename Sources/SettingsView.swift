@@ -39,7 +39,7 @@ struct SettingsView: View {
             }
         }
         .frame(minWidth: 980, minHeight: 720)
-        .onAppear { NSApp.activate() }
+        .onAppear { SettingsWindow.bringToFront() }  // also covers the window opening by itself at first launch
     }
 }
 

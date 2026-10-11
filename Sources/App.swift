@@ -93,7 +93,33 @@ struct MenuContent: View {
     private func open(_ pane: Pane) {
         Navigation.shared.pane = pane
         openWindow(id: "settings")
-        NSApp.activate()
+        SettingsWindow.bringToFront()
+    }
+}
+
+/// A menu-bar-only app can't take focus from the front app, so the settings window opened behind
+/// other windows. While it's open, TinyRemote becomes a regular app (Dock icon, ⌘Tab) and comes forward;
+/// closing the window returns it to menu-bar-only.
+enum SettingsWindow {
+    private static var closeObserver: Any?
+    static var enabled = true  // off in snapshot mode
+
+    static func bringToFront() {
+        guard enabled else { return }
+        NSApp.setActivationPolicy(.regular)
+        DispatchQueue.main.async {
+            guard let window = NSApp.windows.first(where: { $0.identifier?.rawValue.contains("settings") == true }) else { return }
+            NSApp.activate()
+            window.makeKeyAndOrderFront(nil)
+            window.orderFrontRegardless()
+            if closeObserver == nil {
+                closeObserver = NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: window, queue: .main) { _ in
+                    NSApp.setActivationPolicy(.accessory)
+                    if let closeObserver { NotificationCenter.default.removeObserver(closeObserver) }
+                    closeObserver = nil
+                }
+            }
+        }
     }
 }
 
@@ -102,6 +128,7 @@ extension AppDelegate {
     /// Usage: TinyRemote --snapshot /tmp/shots
     func snapshot(to directory: String) {
         Config.readOnly = true
+        SettingsWindow.enabled = false
         Remote.shared.connected = true  // show the ready state in docs; snapshot mode doesn't attach to the remote
         try? FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
         for pane in Pane.allCases {
