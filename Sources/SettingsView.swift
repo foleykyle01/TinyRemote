@@ -94,21 +94,29 @@ struct TouchPane: View {
                     toggleRow("Move the cursor with one finger", $remote.config.trackpadEnabled)
                     speedRow("Speed", $remote.config.cursorSpeed).disabled(!remote.config.trackpadEnabled)
                 }
-                Card(title: "Gestures") {
-                    ForEach(Gesture.allCases) { gesture in
-                        HStack(alignment: .top, spacing: 14) {
-                            Image(systemName: gesture.icon).font(.title2).frame(width: 30)
-                            VStack(alignment: .leading, spacing: 8) {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(gesture.title)
-                                    Text(gesture.detail).font(.callout).foregroundStyle(.secondary)
-                                }
-                                ActionField(action: Binding(get: { remote.config.gestures[gesture] ?? "" },
-                                                            set: { remote.config.gestures[gesture] = $0 }),
-                                            defaultAction: Config.defaultGestures[gesture] ?? "")
-                            }
+                Card(title: "Clicking") {
+                    touchRow("hand.point.up", "Click", "Press the clickpad.", select(\.press), Config.defaultButtons[.select]?.press ?? "")
+                    Divider()
+                    touchRow("hand.point.up.fill", "Click and hold", "Press and keep your thumb still. Move while pressing to drag instead.",
+                             select(\.longPress), Config.defaultButtons[.select]?.longPress ?? "") {
+                        HStack(spacing: 8) {
+                            Text("Hold for").foregroundStyle(.secondary)
+                            TextField("", value: holdMs, format: .number)
+                                .labelsHidden()
+                                .textFieldStyle(.roundedBorder)
+                                .multilineTextAlignment(.trailing)
+                                .frame(width: 70)
+                            Text("ms").foregroundStyle(.secondary)
                         }
-                        if gesture != Gesture.allCases.last { Divider() }
+                        .disabled(remote.config.buttons[.select]?.longPress.isEmpty ?? true)
+                    }
+                    Divider()
+                    touchRow(Gesture.tap.icon, Gesture.tap.title, "Touch quickly without pressing.", gesture(.tap), Config.defaultGestures[.tap] ?? "")
+                }
+                Card(title: "Two fingers") {
+                    ForEach([Gesture.twoFingerTap, .twoFingerClick]) { gesture in
+                        touchRow(gesture.icon, gesture.title, gesture.detail, self.gesture(gesture), Config.defaultGestures[gesture] ?? "")
+                        if gesture == .twoFingerTap { Divider() }
                     }
                 }
                 Card(title: "Scrolling") {
@@ -126,6 +134,36 @@ struct TouchPane: View {
     private func toggleRow(_ title: String, _ isOn: Binding<Bool>) -> some View {
         Toggle(isOn: isOn) { Text(title).frame(maxWidth: .infinity, alignment: .leading) }
             .toggleStyle(.switch)
+    }
+
+    private func touchRow(_ icon: String, _ title: String, _ detail: String, _ action: Binding<String>, _ defaultAction: String,
+                          @ViewBuilder extra: () -> some View = { EmptyView() }) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: icon).font(.title2).frame(width: 30)
+            VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                    Text(detail).font(.callout).foregroundStyle(.secondary)
+                }
+                ActionField(action: action, defaultAction: defaultAction)
+                extra()
+            }
+        }
+    }
+
+    /// The clickpad press is the remote's "select" button; its mapping is edited here, not on Buttons.
+    private func select(_ field: WritableKeyPath<Mapping, String>) -> Binding<String> {
+        Binding(get: { remote.config.buttons[.select, default: Mapping()][keyPath: field] },
+                set: { remote.config.buttons[.select, default: Mapping()][keyPath: field] = $0 })
+    }
+
+    private func gesture(_ gesture: Gesture) -> Binding<String> {
+        Binding(get: { remote.config.gestures[gesture] ?? "" }, set: { remote.config.gestures[gesture] = $0 })
+    }
+
+    private var holdMs: Binding<Double> {
+        Binding(get: { remote.config.buttons[.select]?.longPressMs ?? remote.config.longPressMs },
+                set: { remote.config.buttons[.select, default: Mapping()].longPressMs = max(150, $0) })
     }
 
     private func speedRow(_ title: String, _ value: Binding<Double>) -> some View {
@@ -223,6 +261,19 @@ struct ButtonEditor: View {
             .labelsHidden()
             .fixedSize()
             .font(.title3)
+            if button == .select {
+                Text("The clickpad's click, click-and-hold and tap are set on the Touch Surface page.")
+                    .foregroundStyle(.secondary)
+                Button("Open Touch Surface") { Navigation.shared.pane = .touch }
+            } else {
+                bindings
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder private var bindings: some View {
+        VStack(alignment: .leading, spacing: 18) {
             row("Press", \.press)
             row("Release", \.release)
             row("Long press", \.longPress)
