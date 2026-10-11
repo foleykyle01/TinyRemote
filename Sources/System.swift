@@ -35,9 +35,8 @@ enum LoginItem {
     }
 }
 
-/// Updates from GitHub releases via the `gh` CLI, which works with the private repo and
-/// doesn't quarantine downloads (the app isn't notarized). Releases are signed with the same
-/// certificate, so permissions survive updates.
+/// Updates from GitHub releases over HTTPS (public repo, no login). URLSession downloads aren't quarantined,
+/// so the unnotarized app still opens. Releases are signed with the same certificate, so permissions survive updates.
 final class Updater: ObservableObject {
     static let shared = Updater()
     static let repo = "foleykyle01/TinyRemote"
@@ -62,20 +61,23 @@ final class Updater: ObservableObject {
     }
 
     private func update(install: Bool) -> String {
-        guard let gh = ["/opt/homebrew/bin/gh", "/usr/local/bin/gh"].first(where: FileManager.default.isExecutableFile) else {
-            return "Updates need the GitHub CLI: brew install gh"
-        }
-        guard let tag = run(gh, ["api", "repos/\(Self.repo)/releases/latest", "--jq", ".tag_name"])?
-            .trimmingCharacters(in: .whitespacesAndNewlines), !tag.isEmpty else { return "Couldn't reach GitHub (is gh logged in?)" }
+        guard let data = fetch("https://api.github.com/repos/\(Self.repo)/releases/latest"),
+              let release = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let tag = release["tag_name"] as? String else { return "Couldn't reach GitHub" }
         let latest = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
         guard latest.compare(current, options: .numeric) == .orderedDescending else { return "Up to date (\(current))" }
         guard install else { return "Version \(latest) is available" }
 
+        let assets = release["assets"] as? [[String: Any]] ?? []
+        guard let url = assets.first(where: { $0["name"] as? String == "TinyRemote.zip" })?["browser_download_url"] as? String,
+              let zip = fetch(url) else { return "Download of \(latest) failed" }
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("TinyRemote-update")
         try? FileManager.default.removeItem(at: dir)
-        let zip = dir.appendingPathComponent("TinyRemote.zip").path
-        guard run(gh, ["release", "download", tag, "-R", Self.repo, "-p", "TinyRemote.zip", "-D", dir.path]) != nil,
-              run("/usr/bin/ditto", ["-x", "-k", zip, dir.path]) != nil else { return "Download of \(latest) failed" }
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let zipPath = dir.appendingPathComponent("TinyRemote.zip")
+        guard (try? zip.write(to: zipPath)) != nil, run("/usr/bin/ditto", ["-x", "-k", zipPath.path, dir.path]) else {
+            return "Unpacking \(latest) failed"
+        }
         do {
             _ = try FileManager.default.replaceItemAt(Bundle.main.bundleURL, withItemAt: dir.appendingPathComponent("TinyRemote.app"))
         } catch {
@@ -86,6 +88,21 @@ final class Updater: ObservableObject {
         return "Updated to \(latest), restarting…"
     }
 
+    /// Blocking GET; only called off the main thread.
+    private func fetch(_ url: String) -> Data? {
+        guard let url = URL(string: url) else { return nil }
+        var request = URLRequest(url: url, timeoutInterval: 60)
+        request.setValue("TinyRemote/\(current)", forHTTPHeaderField: "User-Agent")
+        var result: Data?
+        let done = DispatchSemaphore(value: 0)
+        URLSession.shared.dataTask(with: request) { data, response, _ in
+            if (response as? HTTPURLResponse)?.statusCode == 200 { result = data }
+            done.signal()
+        }.resume()
+        done.wait()
+        return result
+    }
+
     static func relaunch() {
         let shell = Process()
         shell.executableURL = URL(fileURLWithPath: "/bin/sh")
@@ -94,15 +111,12 @@ final class Updater: ObservableObject {
         NSApp.terminate(nil)
     }
 
-    private func run(_ path: String, _ args: [String]) -> String? {
-        let process = Process(), out = Pipe()
+    private func run(_ path: String, _ args: [String]) -> Bool {
+        let process = Process()
         process.executableURL = URL(fileURLWithPath: path)
         process.arguments = args
-        process.standardOutput = out
-        process.standardError = FileHandle.nullDevice
-        guard (try? process.run()) != nil else { return nil }
-        let data = out.fileHandleForReading.readDataToEndOfFile()
+        guard (try? process.run()) != nil else { return false }
         process.waitUntilExit()
-        return process.terminationStatus == 0 ? String(decoding: data, as: UTF8.self) : nil
+        return process.terminationStatus == 0
     }
 }

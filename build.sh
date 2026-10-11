@@ -9,5 +9,9 @@ cp Info.plist "$APP/Contents/Info.plist"
 mkdir -p "$APP/Contents/Resources"
 cp Resources/AppIcon.icns Resources/Assets.car "$APP/Contents/Resources/"
 swiftc -O -target arm64-apple-macos15.0 -parse-as-library Sources/*.swift -o "$APP/Contents/MacOS/TinyRemote"
-codesign --force --sign "Apple Development: Kyle Foley (SD263FBPPD)" "$APP"
+# Releases use the maintainer's certificate so macOS keeps permissions across updates. Anyone else gets a
+# local ad-hoc signature (set SIGN_IDENTITY to use your own certificate).
+IDENTITY="${SIGN_IDENTITY:-Apple Development: Kyle Foley (SD263FBPPD)}"
+security find-identity -v -p codesigning | grep -qF "$IDENTITY" || IDENTITY="-"
+codesign --force --sign "$IDENTITY" "$APP"
 echo "built $APP"

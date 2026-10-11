@@ -1,15 +1,14 @@
 #!/bin/bash
 # Installs or updates TinyRemote from the latest GitHub release into ~/Applications.
-# Usage: gh release download -R foleykyle01/TinyRemote -p install.sh -O - | bash
+# Usage: curl -fsSL https://github.com/foleykyle01/TinyRemote/releases/latest/download/install.sh | bash
 set -euo pipefail
 REPO="foleykyle01/TinyRemote"
 DEST="$HOME/Applications"
-command -v gh >/dev/null || { echo "Needs the GitHub CLI: brew install gh && gh auth login"; exit 1; }
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 echo "Downloading the latest TinyRemote…"
-gh release download -R "$REPO" -p TinyRemote.zip -D "$TMP"
+curl -fsSL "https://github.com/$REPO/releases/latest/download/TinyRemote.zip" -o "$TMP/TinyRemote.zip"
 
 pkill -x TinyRemote 2>/dev/null || true
 for _ in $(seq 1 50); do pgrep -x TinyRemote >/dev/null || break; sleep 0.1; done  # let it quit before relaunching
