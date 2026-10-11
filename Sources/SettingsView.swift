@@ -395,6 +395,8 @@ struct ActionField: View {
     var body: some View {
         HStack(spacing: 14) {
             Menu {
+                Button("None") { action = "" }
+                Divider()
                 if !remote.config.customActions.isEmpty {
                     Section("My shortcuts") {
                         ForEach(remote.config.customActions) { custom in Button(custom.name) { action = "custom:\(custom.id)" } }
@@ -408,8 +410,6 @@ struct ActionField: View {
                         ForEach(group.actions, id: \.id) { named in Button(named.title) { action = named.id } }
                     }
                 }
-                Divider()
-                Button("None") { action = "" }
             } label: {
                 HStack {
                     Text(recorder.isRecording ? "Type a shortcut…" : (action.isEmpty ? "(none)" : Actions.title(action)))
