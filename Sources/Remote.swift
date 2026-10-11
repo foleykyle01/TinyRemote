@@ -21,6 +21,7 @@ final class Remote: ObservableObject {
 
     private let hid = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
     private var holds: [RemoteButton: Hold] = [:]
+    private var hidOpened = false
 
     private struct Hold {
         var clickHeld = false
@@ -32,7 +33,7 @@ final class Remote: ObservableObject {
         // Only the buttons interface; the touch surface is read through MultitouchSupport.
         IOHIDManagerSetDeviceMatching(hid, [
             kIOHIDVendorIDKey: remoteVendorID, kIOHIDProductIDKey: remoteProductID,
-            kIOHIDDeviceUsagePageKey: 0x0C, kIOHIDDeviceUsageKey: 0x01,
+            kIOHIDPrimaryUsagePageKey: 0x0C, kIOHIDPrimaryUsageKey: 0x01,
         ] as CFDictionary)
         let context = Unmanaged.passUnretained(self).toOpaque()
         IOHIDManagerRegisterInputValueCallback(hid, { context, _, _, value in
@@ -43,6 +44,7 @@ final class Remote: ObservableObject {
         IOHIDManagerRegisterDeviceMatchingCallback(hid, { context, _, _, _ in
             let remote = Unmanaged<Remote>.fromOpaque(context!).takeUnretainedValue()
             remote.connected = true
+            log("remote connected")
             // The touch surface reappears a moment after the remote reconnects.
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { Touch.startRemoteDevices() }
         }, context)
@@ -57,7 +59,12 @@ final class Remote: ObservableObject {
 
     /// Seize the remote so macOS doesn't also act on Play/Volume; fall back to shared access.
     func openHID() {
-        IOHIDManagerClose(hid, IOOptionBits(kIOHIDOptionsTypeNone))
+        if hidOpened {
+            // Closing also unschedules the manager, so put it back on the run loop.
+            IOHIDManagerClose(hid, IOOptionBits(kIOHIDOptionsTypeNone))
+            IOHIDManagerScheduleWithRunLoop(hid, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
+        }
+        hidOpened = true
         exclusive = IOHIDManagerOpen(hid, IOOptionBits(kIOHIDOptionsTypeSeizeDevice)) == kIOReturnSuccess
         if !exclusive { IOHIDManagerOpen(hid, IOOptionBits(kIOHIDOptionsTypeNone)) }
         log("hid opened, exclusive: \(exclusive)")
@@ -67,6 +74,7 @@ final class Remote: ObservableObject {
 
     private func button(_ button: RemoteButton, down: Bool) {
         let binding = config.buttons[button] ?? Mapping()
+        log("\(button) \(down ? "down" : "up") accessibility=\(AXIsProcessTrusted())")
         if down {
             lastButton = button
             var hold = Hold()
