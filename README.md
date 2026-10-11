@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="docs/logo.png" width="160" alt="TinyRemote icon">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/logo-dark.png">
+    <img src="docs/logo.png" width="160" alt="TinyRemote icon">
+  </picture>
 </p>
 
 <h1 align="center">TinyRemote</h1>
@@ -100,7 +103,7 @@ macOS doesn't let apps use the Siri Remote's microphone. The only known way is t
 ./build.sh                              # build and sign into ~/Applications/TinyRemote.app
 ~/Applications/TinyRemote.app/Contents/MacOS/TinyRemote --self-test
 ~/Applications/TinyRemote.app/Contents/MacOS/TinyRemote --snapshot /tmp/shots   # render each settings page to PNG
-swift tools/make-icon.swift             # regenerate the app icon and docs/logo.png
+swift tools/make-icon.swift             # regenerate the icon (Resources/AppIcon.icon → Assets.car) and README logos
 ./release.sh 0.3.0 "What changed"       # bump, build, tag and publish a release
 ```
 

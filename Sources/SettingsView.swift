@@ -39,7 +39,7 @@ struct SettingsView: View {
             }
         }
         .frame(minWidth: 980, minHeight: 720)
-        .onAppear { SettingsWindow.bringToFront() }  // also covers the window opening by itself at first launch
+
     }
 }
 
@@ -621,6 +621,18 @@ struct GeneralPane: View {
 
     var body: some View {
         Form {
+            Section {
+                Toggle("Show in the menu bar", isOn: $remote.config.showMenuBarIcon)
+                Toggle("Show in the Dock", isOn: $remote.config.showInDock)
+                    .onChange(of: remote.config.showInDock) { Dock.apply() }
+            } header: {
+                Text("Appearance")
+            } footer: {
+                Text(remote.config.showMenuBarIcon || remote.config.showInDock
+                     ? "TinyRemote also shows in the Dock while this window is open."
+                     : "With both off, open TinyRemote from Applications or Spotlight to get back to Settings.")
+                    .foregroundStyle(.secondary)
+            }
             Section {
                 Toggle("Open at login", isOn: $openAtLogin).onChange(of: openAtLogin) { LoginItem.enabled = openAtLogin }
                 LabeledContent("Default long press") {

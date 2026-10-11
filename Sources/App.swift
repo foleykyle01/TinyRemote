@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct TinyRemoteApp: App {
     @NSApplicationDelegateAdaptor private var delegate: AppDelegate
+    @ObservedObject private var remote = Remote.shared
 
     init() {
         guard CommandLine.arguments.contains("--self-test") else { return }
@@ -43,10 +44,11 @@ struct TinyRemoteApp: App {
     }
 
     var body: some Scene {
-        MenuBarExtra { MenuContent() } label: { MenuBarIcon() }
-        Window("TinyRemote", id: "settings") { SettingsView() }
-            .defaultLaunchBehavior(Permissions.allGranted ? .suppressed : .presented)
-            .windowResizability(.contentSize)
+        // Write only on a real change: writing the same value republishes the config and loops the scene update.
+        MenuBarExtra(isInserted: Binding(get: { remote.config.showMenuBarIcon },
+                                         set: { if remote.config.showMenuBarIcon != $0 { remote.config.showMenuBarIcon = $0 } })) {
+            MenuContent()
+        } label: { MenuBarIcon() }
     }
 }
 
@@ -58,6 +60,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         LoginItem.enableOnFirstLaunch()
         Remote.shared.start()
         Updater.shared.schedule()
+        Dock.apply()
+        if !Permissions.allGranted { SettingsWindow.show(.setup) }
+    }
+
+    /// Opening TinyRemote again (Finder, Spotlight, Dock) shows Settings, the way back when the
+    /// menu-bar icon is hidden.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        SettingsWindow.show()
+        return false
     }
 }
 
@@ -70,7 +81,6 @@ struct MenuBarIcon: View {
 }
 
 struct MenuContent: View {
-    @Environment(\.openWindow) private var openWindow
     @ObservedObject private var remote = Remote.shared
     @ObservedObject private var updater = Updater.shared
 
@@ -90,36 +100,46 @@ struct MenuContent: View {
         Button("Quit TinyRemote") { NSApp.terminate(nil) }.keyboardShortcut("q")
     }
 
-    private func open(_ pane: Pane) {
-        Navigation.shared.pane = pane
-        openWindow(id: "settings")
-        SettingsWindow.bringToFront()
+    private func open(_ pane: Pane) { SettingsWindow.show(pane) }
+}
+
+/// The settings window, managed directly so it can be opened from the menu bar, on reopen, and at first launch.
+/// A menu-bar-only app can't take focus from the front app, so TinyRemote shows in the Dock while it's open.
+enum SettingsWindow {
+    static var enabled = true  // off in snapshot mode
+    private(set) static var window: NSWindow?
+
+    static var isOpen: Bool { window?.isVisible == true }
+
+    static func show(_ pane: Pane? = nil) {
+        guard enabled else { return }
+        if let pane { Navigation.shared.pane = pane }
+        if window == nil {
+            let hosting = NSHostingController(rootView: SettingsView())
+            hosting.sceneBridgingOptions = [.title, .toolbars]
+            let window = NSWindow(contentViewController: hosting)
+            window.title = "TinyRemote"
+            window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
+            window.isReleasedWhenClosed = false
+            window.setContentSize(NSSize(width: 980, height: 760))
+            window.center()
+            window.setFrameAutosaveName("TinyRemoteSettings")
+            NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: window, queue: .main) { _ in
+                DispatchQueue.main.async { Dock.apply() }  // after the window is no longer visible
+            }
+            self.window = window
+        }
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate()
+        window?.makeKeyAndOrderFront(nil)
+        window?.orderFrontRegardless()
     }
 }
 
-/// A menu-bar-only app can't take focus from the front app, so the settings window opened behind
-/// other windows. While it's open, TinyRemote becomes a regular app (Dock icon, ⌘Tab) and comes forward;
-/// closing the window returns it to menu-bar-only.
-enum SettingsWindow {
-    private static var closeObserver: Any?
-    static var enabled = true  // off in snapshot mode
-
-    static func bringToFront() {
-        guard enabled else { return }
-        NSApp.setActivationPolicy(.regular)
-        DispatchQueue.main.async {
-            guard let window = NSApp.windows.first(where: { $0.identifier?.rawValue.contains("settings") == true }) else { return }
-            NSApp.activate()
-            window.makeKeyAndOrderFront(nil)
-            window.orderFrontRegardless()
-            if closeObserver == nil {
-                closeObserver = NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: window, queue: .main) { _ in
-                    NSApp.setActivationPolicy(.accessory)
-                    if let closeObserver { NotificationCenter.default.removeObserver(closeObserver) }
-                    closeObserver = nil
-                }
-            }
-        }
+/// Dock icon: always when "Show in the Dock" is on, otherwise only while Settings is open.
+enum Dock {
+    static func apply() {
+        NSApp.setActivationPolicy(Remote.shared.config.showInDock || SettingsWindow.isOpen ? .regular : .accessory)
     }
 }
 
