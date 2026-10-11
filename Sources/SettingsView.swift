@@ -64,15 +64,39 @@ struct Card<Content: View>: View {
 struct ButtonsPane: View {
     @ObservedObject private var remote = Remote.shared
     @State private var selected = RemoteButton.tv
+    /// nil = All apps; otherwise an app profile's ID.
+    @State private var profileID: String?
+    @State private var editingProfile: String?
+
+    private var profile: AppProfile? { remote.config.profiles.first { $0.id == profileID } }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Choose a button on the drawing, or press it on your remote.")
+                HStack(spacing: 12) {
+                    Text("Mappings for")
+                    Picker("Mappings for", selection: $profileID) {
+                        Text("All apps").tag(String?.none)
+                        ForEach(remote.config.profiles) { Text($0.name).tag(Optional($0.id)) }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                    if let profileID { Button("Edit Profile…") { editingProfile = profileID } }
+                    Button("New Profile…") {
+                        let new = AppProfile(name: "New profile", bundleIDs: [])
+                        remote.config.profiles.append(new)
+                        profileID = new.id
+                        editingProfile = new.id
+                    }
+                    Spacer()
+                }
+                Text(profile.map { "Overrides used while \(appList($0)) is in front. Buttons you don't customize use the All apps setting." }
+                     ?? "Choose a button on the drawing, or press it on your remote.")
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 HStack(alignment: .top, spacing: 36) {
                     RemoteDrawing(selected: $selected)
-                    ButtonEditor(button: $selected)
+                    ButtonEditor(button: $selected, profileID: profileID)
                 }
                 .padding(20)
                 .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
@@ -81,8 +105,22 @@ struct ButtonsPane: View {
         }
         .navigationTitle("Buttons")
         .onChange(of: remote.lastButton) { if let button = remote.lastButton { selected = button } }
+        .onChange(of: remote.config.profiles.map(\.id)) { if profile == nil { profileID = nil } }
+        .sheet(item: Binding(get: { editingProfile.map { IdentifiedID(id: $0) } }, set: { editingProfile = $0?.id })) { ProfileEditor(profileID: $0.id) }
+    }
+
+    private func appList(_ profile: AppProfile) -> String {
+        let names = profile.bundleIDs.filter { AppInfo.url($0) != nil }.map(AppInfo.name)
+        switch names.count {
+        case 0: return "one of its apps"
+        case 1: return names[0]
+        case 2, 3: return names.dropLast().joined(separator: ", ") + " or " + names.last!
+        default: return names.prefix(3).joined(separator: ", ") + " or another of its apps"
+        }
     }
 }
+
+struct IdentifiedID: Identifiable { let id: String }
 
 struct TouchPane: View {
     @ObservedObject private var remote = Remote.shared
@@ -251,7 +289,11 @@ struct RemoteDrawing: View {
 
 struct ButtonEditor: View {
     @Binding var button: RemoteButton
+    var profileID: String?
     @ObservedObject private var remote = Remote.shared
+
+    private var profileIndex: Int? { profileID.flatMap { id in remote.config.profiles.firstIndex { $0.id == id } } }
+    private var globalMapping: Mapping { remote.config.buttons[button, default: Mapping()] }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -265,8 +307,16 @@ struct ButtonEditor: View {
                 Text("The clickpad's click, click-and-hold and tap are set on the Touch Surface page.")
                     .foregroundStyle(.secondary)
                 Button("Open Touch Surface") { Navigation.shared.pane = .touch }
+            } else if let index = profileIndex, remote.config.profiles[index].buttons[button] == nil {
+                Text("Uses the All apps setting: \(Actions.title(globalMapping.press)).").foregroundStyle(.secondary)
+                Button("Customize for \(remote.config.profiles[index].name)") {
+                    remote.config.profiles[index].buttons[button] = defaultMapping == Mapping() ? globalMapping : defaultMapping
+                }
             } else {
                 bindings
+                if let index = profileIndex {
+                    Button("Use the All apps setting instead") { remote.config.profiles[index].buttons[button] = nil }
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -286,7 +336,7 @@ struct ButtonEditor: View {
                     .frame(width: 70)
                 Text("ms").foregroundStyle(.secondary)
                 Button {
-                    remote.config.buttons[button, default: Mapping()].longPressMs = nil
+                    update { $0.longPressMs = nil }
                 } label: { Label("Default", systemImage: "arrow.counterclockwise") }
                     .labelStyle(.titleAndIcon)
                     .buttonStyle(.borderless)
@@ -300,19 +350,37 @@ struct ButtonEditor: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var mapping: Mapping { remote.config.buttons[button, default: Mapping()] }
+    /// The mapping being edited: the profile's override, or the All apps mapping.
+    private var mapping: Mapping { profileIndex.flatMap { remote.config.profiles[$0].buttons[button] } ?? globalMapping }
+
+    /// What Default restores: the built-in profile's mapping, or the built-in All apps mapping.
+    private var defaultMapping: Mapping {
+        guard let index = profileIndex else { return Config.defaultButtons[button, default: Mapping()] }
+        let id = remote.config.profiles[index].id
+        return Config.defaultProfiles.first { $0.id == id }?.buttons[button] ?? Mapping()
+    }
+
+    private func update(_ change: (inout Mapping) -> Void) {
+        if let index = profileIndex {
+            var override = remote.config.profiles[index].buttons[button] ?? globalMapping
+            change(&override)
+            remote.config.profiles[index].buttons[button] = override
+        } else {
+            change(&remote.config.buttons[button, default: Mapping()])
+        }
+    }
 
     private var longPressMs: Binding<Double> {
         Binding(get: { mapping.longPressMs ?? remote.config.longPressMs },
-                set: { remote.config.buttons[button, default: Mapping()].longPressMs = max(150, $0) })
+                set: { value in update { $0.longPressMs = max(150, value) } })
     }
 
     private func row(_ title: String, _ field: WritableKeyPath<Mapping, String>) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title).foregroundStyle(.secondary)
             ActionField(action: Binding(get: { mapping[keyPath: field] },
-                                        set: { remote.config.buttons[button, default: Mapping()][keyPath: field] = $0 }),
-                        defaultAction: Config.defaultButtons[button, default: Mapping()][keyPath: field])
+                                        set: { value in update { $0[keyPath: field] = value } }),
+                        defaultAction: defaultMapping[keyPath: field])
         }
     }
 }

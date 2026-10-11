@@ -28,6 +28,11 @@ struct TinyRemoteApp: App {
         assert(voice.mapping == Mapping(press: "hold:ctrl+shift+space") && Actions.isHeld(voice.mapping.press))
         assert(Actions.title("hold:ctrl+shift+space") == "Hold ⌃⇧Space" && !Actions.isHeld("double-click"))
         assert(VoiceSettings().mapping == Mapping())
+        let profiles = Config()
+        assert(profiles.mapping(for: .back, app: "com.apple.Safari", isTyping: { false }).press == "cmd+[")
+        assert(profiles.mapping(for: .back, app: "com.google.Chrome", isTyping: { true }).press == "delete")  // typing keeps Delete
+        assert(profiles.mapping(for: .back, app: "com.microsoft.Word", isTyping: { fatalError("no profile, no AX query") }).press == "delete")
+        assert(profiles.mapping(for: .tv, app: "com.apple.Safari", isTyping: { false }).press == "return")  // not overridden
         var config = Config()
         config.buttons[.mute] = Mapping(press: "mute")
         let json = try! JSONEncoder().encode(config)

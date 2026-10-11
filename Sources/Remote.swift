@@ -126,7 +126,8 @@ final class Remote: ObservableObject {
     // MARK: Buttons
 
     private func button(_ button: RemoteButton, down: Bool) {
-        var binding = holds[button]?.mapping ?? config.buttons[button] ?? Mapping()
+        var binding = holds[button]?.mapping
+            ?? config.mapping(for: button, app: NSWorkspace.shared.frontmostApplication?.bundleIdentifier, isTyping: Focus.isTyping)
         // Clicking with two fingers resting on the pad is its own gesture (right click by default).
         if down, button == .select, fingerCount >= 2, let action = config.gestures[.twoFingerClick], !action.isEmpty {
             binding = Mapping(press: action)

@@ -85,6 +85,17 @@ struct Mapping: Codable, Equatable {
     var longPressMs: Double?
 }
 
+/// Per-app button overrides, used while one of `bundleIDs` is the frontmost app.
+struct AppProfile: Codable, Equatable, Identifiable {
+    var id = UUID().uuidString
+    var name: String
+    var bundleIDs: [String]
+    /// Only overridden buttons; the rest use the All apps mapping.
+    var buttons: [RemoteButton: Mapping] = [:]
+    /// Fall back to All apps while a text field has focus (Back stays Delete while typing).
+    var exceptWhenTyping = true
+}
+
 /// A named shortcut or AppleScript the user saved; mapped to buttons as "custom:<id>".
 struct CustomAction: Codable, Equatable, Identifiable {
     enum Kind: String, Codable { case shortcut, script }
@@ -107,6 +118,25 @@ struct Config: Codable, Equatable {
     var autoUpdate = true
     var customActions: [CustomAction] = []
     var voice = VoiceSettings()
+    var profiles: [AppProfile] = Config.defaultProfiles
+
+    static let defaultProfiles = [
+        AppProfile(id: "browsers", name: "Web browsers", bundleIDs: [
+            "com.apple.Safari", "com.apple.SafariTechnologyPreview", "com.google.Chrome", "com.google.Chrome.canary",
+            "company.thebrowser.Browser", "company.thebrowser.dia", "com.microsoft.edgemac", "org.mozilla.firefox",
+            "com.brave.Browser", "com.kagi.kagimacOS", "com.vivaldi.Vivaldi", "com.operasoftware.Opera",
+        ], buttons: [.back: Mapping(press: "cmd+[", longPress: "cmd+]")]),
+    ]
+
+    /// The mapping for `button` given the frontmost app. `isTyping` is only asked when a profile
+    /// would apply, since it queries Accessibility.
+    func mapping(for button: RemoteButton, app bundleID: String?, isTyping: () -> Bool) -> Mapping {
+        if let bundleID, let profile = profiles.first(where: { $0.bundleIDs.contains(bundleID) }),
+           let override = profile.buttons[button], !(profile.exceptWhenTyping && isTyping()) {
+            return override
+        }
+        return buttons[button] ?? Mapping()
+    }
 
     static let defaultGestures: [Gesture: String] = [.tap: "left-click", .twoFingerTap: "right-click", .twoFingerClick: "right-click"]
 
