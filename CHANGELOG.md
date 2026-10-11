@@ -2,6 +2,10 @@
 
 Every TinyRemote release. Downloads for each version are on the [releases page](https://github.com/foleykyle01/TinyRemote/releases).
 
+## 0.6.1 (2026-10-11)
+
+- The app and docs now call it the Apple TV Remote
+
 ## 0.6.0 — now open source (2026-10-11)
 
 TinyRemote is now public under the MIT license.
