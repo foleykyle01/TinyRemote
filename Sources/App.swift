@@ -97,6 +97,7 @@ extension AppDelegate {
     /// Usage: TinyRemote --snapshot /tmp/shots
     func snapshot(to directory: String) {
         Config.readOnly = true
+        Remote.shared.connected = true  // show the ready state in docs; snapshot mode doesn't attach to the remote
         try? FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
         for pane in Pane.allCases {
             Navigation.shared.pane = pane

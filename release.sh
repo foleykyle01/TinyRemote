@@ -16,4 +16,4 @@ ditto -c -k --keepParent build/TinyRemote.app build/TinyRemote.zip
 git commit -qam "Release $VERSION"
 git tag "v$VERSION"
 git push -q origin HEAD "v$VERSION"
-gh release create "v$VERSION" build/TinyRemote.zip --title "TinyRemote $VERSION" --notes "$NOTES"
+gh release create "v$VERSION" build/TinyRemote.zip install.sh --title "TinyRemote $VERSION" --notes "$NOTES"
