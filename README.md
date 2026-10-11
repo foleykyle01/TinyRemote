@@ -72,7 +72,7 @@ Every one of these is a default you can change.
   </tr>
   <tr>
     <td valign="top">
-      <h3>⌨️ My Shortcuts</h3>
+      <h3>My Shortcuts</h3>
       Record, name and test your own shortcuts and AppleScripts once, then put them on any button or gesture.
     </td>
     <td valign="top">
