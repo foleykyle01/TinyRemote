@@ -45,12 +45,24 @@ enum RemoteButton: String, Codable, CodingKeyRepresentable, CaseIterable, Identi
     var repeatsWhileHeld: Bool { [.up, .down, .left, .right].contains(self) }
 }
 
-/// An action is a string: a shortcut like "ctrl+right", or a named action (see Actions.swift).
-/// Empty string means nothing.
+/// An action is a string: a shortcut like "ctrl+right", a named action (see Actions.swift), or
+/// "custom:<id>" for one of the user's saved shortcuts. Empty string means nothing.
 struct Mapping: Codable, Equatable {
     var press = ""
     var release = ""
     var longPress = ""
+    /// nil uses the global long-press delay.
+    var longPressMs: Double?
+}
+
+/// A named shortcut or AppleScript the user saved; mapped to buttons as "custom:<id>".
+struct CustomAction: Codable, Equatable, Identifiable {
+    enum Kind: String, Codable { case shortcut, script }
+    var id = UUID().uuidString
+    var name: String
+    var kind = Kind.shortcut
+    /// A shortcut string ("ctrl+shift+space") or AppleScript source.
+    var value: String
 }
 
 struct Config: Codable, Equatable {
@@ -62,6 +74,7 @@ struct Config: Codable, Equatable {
     var ringScrollEnabled = true
     var scrollSpeed = 1.0
     var autoUpdate = true
+    var customActions: [CustomAction] = []
 
     static let defaultButtons: [RemoteButton: Mapping] = [
         .up: Mapping(press: "up"),
@@ -76,7 +89,7 @@ struct Config: Codable, Equatable {
         .volumeUp: Mapping(press: "ctrl+left"),
         .volumeDown: Mapping(press: "ctrl+right"),
         .power: Mapping(press: "escape"),
-        .mic: Mapping(press: "ctrl+shift+space", release: "ctrl+shift+space"),
+        .mic: Mapping(),
     ]
 
     static let url: URL = {
@@ -99,7 +112,11 @@ struct Config: Codable, Equatable {
         return (try? JSONSerialization.data(withJSONObject: merged)).flatMap { try? JSONDecoder().decode(Config.self, from: $0) } ?? Config()
     }
 
+    /// Set by the self-test so it never touches the real config file.
+    static var readOnly = false
+
     func save() {
+        guard !Config.readOnly else { return }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try? encoder.encode(self).write(to: Config.url, options: .atomic)

@@ -21,7 +21,6 @@ enum Actions {
         ("ctrl+up", "Mission Control"),
         ("ctrl+down", "App windows"),
         ("cmd+tab", "Switch app"),
-        ("ctrl+shift+space", "FluidVoice dictation"),
         ("return", "Return"),
         ("escape", "Escape"),
         ("delete", "Delete"),
@@ -68,8 +67,15 @@ enum Actions {
         return parts.joined(separator: "+")
     }
 
+    static func custom(_ action: String) -> CustomAction? {
+        guard action.hasPrefix("custom:") else { return nil }
+        let id = action.dropFirst("custom:".count)
+        return Remote.shared.config.customActions.first { $0.id == id }
+    }
+
     static func title(_ action: String) -> String {
         if action.isEmpty { return "—" }
+        if action.hasPrefix("custom:") { return custom(action)?.name ?? "Deleted shortcut" }
         if let named = (named + presets).first(where: { $0.id == action }) { return named.title }
         var parts = action.split(separator: "+").map(String.init)
         let key = parts.popLast() ?? ""
@@ -86,6 +92,12 @@ enum Actions {
     static func perform(_ action: String, down: Bool) {
         switch action {
         case "": return
+        case _ where action.hasPrefix("custom:"):
+            guard let custom = custom(action) else { return }
+            switch custom.kind {
+            case .shortcut: perform(custom.value, down: down)
+            case .script: if down { runAppleScript(custom.value) }
+            }
         case "left-click": mouse(down ? .leftMouseDown : .leftMouseUp, .left); leftButtonDown = down
         case "right-click": mouse(down ? .rightMouseDown : .rightMouseUp, .right)
         case "play-pause": media(16, down: down)
@@ -116,6 +128,15 @@ enum Actions {
         perform(action, down: true)
         usleep(15_000)
         perform(action, down: false)
+    }
+
+    /// Runs off the main thread so a slow script can't stall the remote.
+    static func runAppleScript(_ source: String) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        process.arguments = ["-e", source]
+        process.terminationHandler = { log("applescript exited \($0.terminationStatus)") }
+        try? process.run()
     }
 
     private static func postKey(_ key: CGKeyCode, down: Bool, flags: CGEventFlags) {
