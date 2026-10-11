@@ -89,10 +89,11 @@ final class Remote: ObservableObject {
             IOHIDManagerClose(hid, IOOptionBits(kIOHIDOptionsTypeNone))
             IOHIDManagerScheduleWithRunLoop(hid, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
         }
+        let wasOpened = hidOpened, wasExclusive = exclusive
         hidOpened = true
         exclusive = IOHIDManagerOpen(hid, IOOptionBits(kIOHIDOptionsTypeSeizeDevice)) == kIOReturnSuccess
         if !exclusive { IOHIDManagerOpen(hid, IOOptionBits(kIOHIDOptionsTypeNone)) }
-        log("hid opened, exclusive: \(exclusive)")
+        if !wasOpened || exclusive != wasExclusive { log("hid opened, exclusive: \(exclusive)") }  // retries every 5 s; log changes only
     }
 
     /// Full restart of both input paths; used after wake and by the Setup page's Reconnect button.
