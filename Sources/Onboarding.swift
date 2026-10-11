@@ -111,7 +111,7 @@ struct OnboardingView: View {
             VStack(spacing: 18) {
                 Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 112, height: 112)
                 Text("Welcome to TinyRemote").font(.largeTitle.bold())
-                Text("Use your Siri Remote to control your Mac: buttons, a trackpad, scrolling and push-to-talk dictation. Setup takes about a minute.")
+                Text("Use your Apple TV Remote to control your Mac: buttons, a trackpad, scrolling and push-to-talk dictation. Setup takes about a minute.")
                     .font(.title3).foregroundStyle(.secondary).multilineTextAlignment(.center)
             }
         case .permissions:
@@ -136,7 +136,7 @@ struct OnboardingView: View {
             }
         case .remote:
             VStack(alignment: .leading, spacing: 20) {
-                header("Connect your Siri Remote", "Works with the aluminum Siri Remote (2nd and 3rd generation).")
+                header("Connect your Apple TV Remote", "Works with the aluminum Apple TV Remote (2nd and 3rd generation).")
                 VStack(alignment: .leading, spacing: 10) {
                     numbered(1, "Bring the remote close to your Mac.")
                     numbered(2, "Hold Back and Volume + together for about 5 seconds.")
@@ -145,7 +145,7 @@ struct OnboardingView: View {
                 Button("Open Bluetooth Settings") {
                     NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.BluetoothSettings")!)
                 }
-                status(remote.connected, done: "Siri Remote connected", waiting: "Waiting for the remote…")
+                status(remote.connected, done: "Apple TV Remote connected", waiting: "Waiting for the remote…")
             }
         case .tryIt:
             VStack(alignment: .leading, spacing: 20) {

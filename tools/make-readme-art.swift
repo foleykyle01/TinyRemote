@@ -55,7 +55,7 @@ func banner(width: CGFloat, height: CGFloat, dark: Bool, path: String) {
         let textX = height * 0.12 + iconSize + height * 0.04
         let textWidth = width - textX - height * 0.1
         text("TinyRemote", NSPoint(x: textX, y: height * 0.26), size: height * 0.2, weight: .bold, color: .white, width: textWidth, height: height * 0.3, flip: flip)
-        text("Your Siri Remote, made for your Mac.", NSPoint(x: textX, y: height * 0.51), size: height * 0.075, weight: .medium,
+        text("Your Apple TV Remote, made for your Mac.", NSPoint(x: textX, y: height * 0.51), size: height * 0.075, weight: .medium,
              color: color(0xFFFFFF, 0.92), width: textWidth, height: height * 0.12, flip: flip)
         text("Remap every button · Trackpad · App-aware · Push-to-talk dictation", NSPoint(x: textX, y: height * 0.64),
              size: height * 0.048, color: color(0xFFFFFF, 0.7), width: textWidth, height: height * 0.1, flip: flip)
@@ -75,7 +75,7 @@ func socialPreview(path: String) {
         logo.draw(in: flip(NSRect(x: (width - 300) / 2, y: 30, width: 300, height: 300)))
         let center = width / 2, textWidth = width - 160
         text("TinyRemote", NSPoint(x: center, y: 330), size: 104, weight: .bold, color: .white, align: .center, width: textWidth, height: 130, flip: flip)
-        text("Your Siri Remote, made for your Mac.", NSPoint(x: center, y: 462), size: 44, weight: .medium,
+        text("Your Apple TV Remote, made for your Mac.", NSPoint(x: center, y: 462), size: 44, weight: .medium,
              color: color(0xFFFFFF, 0.92), align: .center, width: textWidth, height: 60, flip: flip)
         text("Remap every button · Trackpad · App-aware · Push-to-talk dictation", NSPoint(x: center, y: 530),
              size: 30, color: color(0xFFFFFF, 0.72), align: .center, width: textWidth, height: 46, flip: flip)

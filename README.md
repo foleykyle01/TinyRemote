@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/banner-dark.png">
-    <img src="docs/banner.png" alt="TinyRemote: your Siri Remote, made for your Mac">
+    <img src="docs/banner.png" alt="TinyRemote: your Apple TV Remote, made for your Mac">
   </picture>
 </p>
 
@@ -23,7 +23,7 @@
   &nbsp;·&nbsp; <a href="CHANGELOG.md">Changelog</a>
 </p>
 
-The Siri Remote is a lovely little controller: a clickpad, a touch surface and a handful of buttons, all on Bluetooth. Paired with a Mac, it mostly sits in a drawer.
+The Apple TV Remote is a lovely little controller: a clickpad, a touch surface and a handful of buttons, all on Bluetooth. Paired with a Mac, it mostly sits in a drawer.
 
 **TinyRemote turns it into a couch-friendly Mac controller.** You can move the pointer, click, scroll, switch desktops, go back a page and start dictation, and you can remap every button to whatever you like. It's a single 3 MB menu-bar app with no AI assistant, background services or admin helpers.
 
@@ -45,7 +45,7 @@ Every one of these is a default you can change.
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/remote-map-dark.png">
-    <img src="docs/remote-map.png" width="820" alt="Siri Remote with each button's default action">
+    <img src="docs/remote-map.png" width="820" alt="Apple TV Remote with each button's default action">
   </picture>
 </p>
 
@@ -140,7 +140,7 @@ Build with `./build.sh` and check with `--self-test` (see [Development](#develop
 
 ## Install
 
-**Requirements:** a Mac with Apple silicon running macOS 15 or later, and an aluminum Siri Remote (2nd or 3rd generation).
+**Requirements:** a Mac with Apple silicon running macOS 15 or later, and an aluminum Apple TV Remote (2nd or 3rd generation).
 
 ### One command
 
@@ -175,25 +175,25 @@ TinyRemote checks for new releases on launch and every few hours, then installs 
 <details>
 <summary><b>Do I need to point the remote at my Mac?</b></summary>
 
-No. The Siri Remote talks to your Mac over Bluetooth, so it works from anywhere in the room, pointed anywhere. Macs don't have IR receivers anymore. The remote's IR emitter is only for TVs and soundbars.
+No. The Apple TV Remote talks to your Mac over Bluetooth, so it works from anywhere in the room, pointed anywhere. Macs don't have IR receivers anymore. The remote's IR emitter is only for TVs and soundbars.
 </details>
 
 <details>
 <summary><b>Can the remote be used as a microphone?</b></summary>
 
-Not by TinyRemote. macOS doesn't let apps use the Siri Remote's microphone. The only known way is to turn on Bluetooth debug logging for the whole Mac and read the audio out of that log with admin rights. That log includes private data from every Bluetooth device, and the capture keeps growing in memory. Instead, the mic button triggers your dictation app, which listens through your Mac's microphone or AirPods.
+Not by TinyRemote. macOS doesn't let apps use the Apple TV Remote's microphone. The only known way is to turn on Bluetooth debug logging for the whole Mac and read the audio out of that log with admin rights. That log includes private data from every Bluetooth device, and the capture keeps growing in memory. Instead, the mic button triggers your dictation app, which listens through your Mac's microphone or AirPods.
 </details>
 
 <details>
 <summary><b>Which remotes work?</b></summary>
 
-The aluminum Siri Remote (2nd and 3rd generation, Lightning or USB-C). The older black-glass Siri Remote and the white Apple Remote aren't supported.
+The aluminum Apple TV Remote (2nd and 3rd generation, Lightning or USB-C). The older black-glass Apple TV Remote (2015) and the white Apple Remote aren't supported.
 </details>
 
 <details>
 <summary><b>Can I point the remote at the screen to move the pointer?</b></summary>
 
-No. The aluminum Siri Remote has no motion sensors, so the clickpad's touch surface moves the pointer instead.
+No. The aluminum Apple TV Remote has no motion sensors, so the clickpad's touch surface moves the pointer instead.
 </details>
 
 <details>
@@ -234,4 +234,4 @@ Issues and pull requests are welcome.
 
 ## License
 
-[MIT](LICENSE). TinyRemote isn't affiliated with Apple. Siri Remote is a trademark of Apple Inc.
+[MIT](LICENSE). TinyRemote isn't affiliated with Apple. Apple TV is a trademark of Apple Inc.

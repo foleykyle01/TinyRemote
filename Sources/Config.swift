@@ -22,7 +22,7 @@ enum RemoteButton: String, Codable, CodingKeyRepresentable, CaseIterable, Identi
         }
     }
 
-    /// HID (usage page, usage) reported by the Siri Remote (2nd/3rd gen), from discovery.
+    /// HID (usage page, usage) reported by the Apple TV Remote (2nd/3rd gen), from discovery.
     static func from(page: UInt32, usage: UInt32) -> RemoteButton? {
         switch (page, usage) {
         case (0x0C, 0x42): .up

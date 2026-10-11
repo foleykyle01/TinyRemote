@@ -213,7 +213,7 @@ struct TouchPane: View {
     }
 }
 
-/// A drawn Siri Remote (2nd/3rd gen); each control selects its button.
+/// A drawn Apple TV Remote (2nd/3rd gen); each control selects its button.
 struct RemoteDrawing: View {
     @Binding var selected: RemoteButton
 
@@ -677,7 +677,7 @@ struct SetupPane: View {
                 step("Accessibility", "Lets TinyRemote send shortcuts, clicks and cursor movement.", done: accessibility) {
                     Button("Grant…") { Permissions.requestAccessibility() }
                 }
-                step("Siri Remote connected", remote.connected ? "Connected and ready." : "Pair it in Bluetooth settings: hold Back and Volume + near the Mac for 5 seconds.", done: remote.connected) {
+                step("Apple TV Remote connected", remote.connected ? "Connected and ready." : "Pair it in Bluetooth settings: hold Back and Volume + near the Mac for 5 seconds.", done: remote.connected) {
                     Button("Bluetooth…") { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.BluetoothSettings")!) }
                 }
                 step("Exclusive access", remote.exclusive ? "Only TinyRemote handles the remote, so macOS won't also react to Play or Volume." : "Another app (like GoatRemote) is holding the remote. Quit it and remove it from Login Items.", done: remote.exclusive || !remote.connected) {

@@ -19,7 +19,7 @@ TinyRemote is now public under the MIT license.
 
 ## 0.5.0 (2026-10-11)
 
-- **Welcome guide for new installs:** allow Input Monitoring and Accessibility (with a restart prompt when macOS needs one), connect the Siri Remote with a live connected check, try the buttons and clickpad, then finish with open-at-login
+- **Welcome guide for new installs:** allow Input Monitoring and Accessibility (with a restart prompt when macOS needs one), connect the Apple TV Remote with a live connected check, try the buttons and clickpad, then finish with open-at-login
 - Progress is kept across the Input Monitoring restart
 - **Setup → Run Setup Again** shows the guide any time
 - Existing installs skip the guide
@@ -58,7 +58,7 @@ TinyRemote is now public under the MIT license.
 
 ## 0.1.0 (2026-10-11)
 
-- First public build: a menu-bar app that turns the Siri Remote into a Mac controller
+- First public build: a menu-bar app that turns the Apple TV Remote into a Mac controller
 - Remappable buttons with press and long-press actions
 - Touch surface moves the pointer, with tap to click and a drag dead zone
 - Circle the outer ring to scroll

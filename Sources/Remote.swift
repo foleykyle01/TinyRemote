@@ -2,14 +2,14 @@ import AppKit
 import IOKit.hid
 
 let remoteVendorID = 76    // Apple
-let remoteProductID = 788  // Siri Remote (2nd/3rd gen)
+let remoteProductID = 788  // Apple TV Remote (2nd/3rd gen)
 
 func log(_ message: String) {
     fputs("\(Date()) \(message)\n", stderr)
     fflush(stderr)
 }
 
-/// Reads the Siri Remote (buttons via HID, touch surface via MultitouchSupport) and runs the mapped actions.
+/// Reads the Apple TV Remote (buttons via HID, touch surface via MultitouchSupport) and runs the mapped actions.
 final class Remote: ObservableObject {
     static let shared = Remote()
     /// Input Monitoring only takes effect for a process started after it was granted.
@@ -123,7 +123,7 @@ final class Remote: ObservableObject {
         var found: [String] = []
         if !Permissions.inputMonitoring { found.append("Input Monitoring is off") }
         if !Permissions.accessibility { found.append("Accessibility is off") }
-        if !connected { found.append("Siri Remote not connected") } else if !exclusive { found.append("Another app is using the remote") }
+        if !connected { found.append("Apple TV Remote not connected") } else if !exclusive { found.append("Another app is using the remote") }
         if found != problems { problems = found }
     }
 

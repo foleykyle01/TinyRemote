@@ -146,7 +146,7 @@ struct VoicePane: View {
                     Text("Not available yet. Your dictation app records from the microphone chosen in that app, such as your AirPods or the Mac's built-in mic.")
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Why it's off").font(.headline)
-                        bullet("macOS doesn't let apps use the Siri Remote's microphone. The only known way is to turn on Bluetooth debug logging for the whole Mac and read the remote's audio out of that log with admin rights.")
+                        bullet("macOS doesn't let apps use the Apple TV Remote's microphone. The only known way is to turn on Bluetooth debug logging for the whole Mac and read the remote's audio out of that log with admin rights.")
                         bullet("That log includes private data from every Bluetooth device, and the capture grows in memory while it runs.")
                         bullet("It needs Apple's PacketLogger (a free developer download), an admin password, a configuration profile, and an extra audio driver.")
                         bullet("The remote only sends audio while the mic button is held.")
