@@ -18,7 +18,9 @@
   <a href="https://github.com/foleykyle01/TinyRemote/releases/latest/download/TinyRemote.zip"><b>Download</b></a>
   &nbsp;·&nbsp; <a href="#install">Install</a>
   &nbsp;·&nbsp; <a href="#your-thumb-does-everything">How it works</a>
+  &nbsp;·&nbsp; <a href="#make-it-yours">Make it yours</a>
   &nbsp;·&nbsp; <a href="#faq">FAQ</a>
+  &nbsp;·&nbsp; <a href="CHANGELOG.md">Changelog</a>
 </p>
 
 The Siri Remote is a lovely little controller: a clickpad, a touch surface and a handful of buttons, all on Bluetooth. Paired with a Mac, it mostly sits in a drawer.
@@ -81,6 +83,32 @@ Every one of these is a default you can change.
     </td>
   </tr>
 </table>
+
+## Make it yours
+
+TinyRemote is deliberately small. It does the remote well and leaves the rest to you. That's why it's open source: the idea is that you build the integrations you need instead of waiting for someone else to.
+
+**Without writing code**
+
+- **My Shortcuts** can be a keyboard shortcut or an AppleScript, and AppleScript reaches a long way:
+  ```applescript
+  tell application "Music" to playpause                                  -- control any scriptable app
+  do shell script "open -g 'shortcuts://run-shortcut?name=Movie%20Mode'"  -- run a Shortcuts automation
+  do shell script "curl -s -X POST http://homebridge.local:8581/scene/tv" -- hit a webhook or smart-home API
+  ```
+  Put any of these on a button, a long press or a gesture.
+- **App profiles** give buttons a different job in a specific app, like Back going back a page in browsers.
+
+**With a few lines of Swift**
+
+| To add | Edit |
+|---|---|
+| A new built-in action (shows up in every action menu) | `Actions.named` and the `switch` in `Actions.perform`, in `Sources/Actions.swift` |
+| A dictation app preset | `DictationApp.all` in `Sources/Voice.swift` |
+| A built-in app profile, like the browser one | `Config.defaultProfiles` in `Sources/Config.swift` |
+| A new gesture | `Gesture` in `Sources/Config.swift`, and its detection in `Remote.touch` in `Sources/Remote.swift` |
+
+Build with `./build.sh` and check with `--self-test` (see [Development](#development)). If your integration could help others, open a pull request.
 
 ## Tiny by design
 
@@ -194,7 +222,7 @@ No Xcode project and no dependencies, just `swiftc`.
 ~/Applications/TinyRemote.app/Contents/MacOS/TinyRemote --snapshot /tmp/shots   # render every settings page to PNG
 swift tools/make-icon.swift             # app icon (Resources/AppIcon.icon) and README logos; needs Xcode
 swift tools/make-readme-art.swift       # README banner, remote map and social preview (docs/social-preview.jpg)
-./release.sh 0.6.0 "What changed"       # maintainers: bump, build, tag and publish a release
+./release.sh 0.7.0 "- What changed"     # maintainers: bump, build, tag, publish and add to CHANGELOG.md
 ```
 
 - **`Sources/Remote.swift`:** reads the remote. Buttons come through IOKit HID with exclusive access; the touch surface comes through Apple's private MultitouchSupport framework.
