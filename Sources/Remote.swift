@@ -104,7 +104,7 @@ final class Remote: ObservableObject {
 
     /// Let go of anything held (a click mid-drag, repeat timers) so nothing stays stuck.
     func releaseAll() {
-        for (button, hold) in holds {
+        for hold in holds.values {
             hold.timers.forEach { $0.invalidate() }
             if hold.clickHeld { Actions.perform(hold.mapping.press, down: false) }
         }
