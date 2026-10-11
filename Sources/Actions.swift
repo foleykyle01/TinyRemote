@@ -39,8 +39,8 @@ enum Actions {
         "pagedown": 121, "left": 123, "right": 124, "down": 125, "up": 126,
     ]
     static let keyNames = Dictionary(keyCodes.map { ($1, $0) }, uniquingKeysWith: { a, _ in a })
-    static let modifiers: [(name: String, flag: CGEventFlags, symbol: String)] = [
-        ("ctrl", .maskControl, "⌃"), ("opt", .maskAlternate, "⌥"), ("shift", .maskShift, "⇧"), ("cmd", .maskCommand, "⌘"),
+    static let modifiers: [(name: String, flag: CGEventFlags, symbol: String, key: CGKeyCode)] = [
+        ("ctrl", .maskControl, "⌃", 59), ("opt", .maskAlternate, "⌥", 58), ("shift", .maskShift, "⇧", 56), ("cmd", .maskCommand, "⌘", 55),
     ]
 
     static func parseShortcut(_ action: String) -> (key: CGKeyCode, flags: CGEventFlags)? {
@@ -96,9 +96,19 @@ enum Actions {
         case "mute": media(7, down: down)
         default:
             guard let (key, flags) = parseShortcut(action) else { return }
-            let event = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: down)
-            event?.flags = flags
-            event?.post(tap: .cghidEventTap)
+            // Press and release modifiers as their own keys, like a real keyboard. Putting the flags
+            // only on the key event leaves macOS believing they're still held, so later clicks
+            // become Ctrl-clicks (right-clicks).
+            let used = modifiers.filter { flags.contains($0.flag) }
+            var held = CGEventFlags()
+            if down {
+                for modifier in used { held.insert(modifier.flag); postKey(modifier.key, down: true, flags: held) }
+                postKey(key, down: true, flags: flags)
+            } else {
+                postKey(key, down: false, flags: flags)
+                held = flags.intersection([.maskControl, .maskAlternate, .maskShift, .maskCommand])
+                for modifier in used.reversed() { held.remove(modifier.flag); postKey(modifier.key, down: false, flags: held) }
+            }
         }
     }
 
@@ -108,10 +118,36 @@ enum Actions {
         perform(action, down: false)
     }
 
+    private static func postKey(_ key: CGKeyCode, down: Bool, flags: CGEventFlags) {
+        let event = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: down)
+        event?.flags = flags
+        event?.post(tap: .cghidEventTap)
+    }
+
     static var cursorLocation: CGPoint { CGEvent(source: nil)?.location ?? .zero }
 
+    private static var lastDown = (time: Date.distantPast, location: CGPoint.zero, clicks: 0)
+    private static var eventNumber: Int64 = 0
+
+    /// Synthetic clicks need the fields a real mouse fills in, or some apps (Electron/Teams) misread them:
+    /// a click count for double-clicks, a shared event number for down/up, pressure, and only the
+    /// physical keyboard's modifiers.
     private static func mouse(_ type: CGEventType, _ button: CGMouseButton) {
-        CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: cursorLocation, mouseButton: button)?.post(tap: .cghidEventTap)
+        let location = cursorLocation
+        let isDown = type == .leftMouseDown || type == .rightMouseDown
+        if isDown {
+            let isRepeat = Date().timeIntervalSince(lastDown.time) < NSEvent.doubleClickInterval
+                && hypot(location.x - lastDown.location.x, location.y - lastDown.location.y) < 5
+            lastDown = (Date(), location, isRepeat ? lastDown.clicks + 1 : 1)
+            eventNumber += 1
+        }
+        guard let event = CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: location, mouseButton: button) else { return }
+        event.flags = CGEventSource.flagsState(.hidSystemState).intersection([.maskShift, .maskControl, .maskAlternate, .maskCommand])
+        event.setIntegerValueField(.mouseEventClickState, value: Int64(lastDown.clicks))
+        event.setIntegerValueField(.mouseEventNumber, value: eventNumber)
+        event.setDoubleValueField(.mouseEventPressure, value: isDown ? 1 : 0)
+        log("click \(type.rawValue) clicks=\(lastDown.clicks) flags=\(String(event.flags.rawValue, radix: 16))")
+        event.post(tap: .cghidEventTap)
     }
 
     /// NX_KEYTYPE_* media keys, sent as system-defined events like a real keyboard's media row.
