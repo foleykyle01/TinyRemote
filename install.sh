@@ -12,6 +12,7 @@ echo "Downloading the latest TinyRemote…"
 gh release download -R "$REPO" -p TinyRemote.zip -D "$TMP"
 
 pkill -x TinyRemote 2>/dev/null || true
+for _ in $(seq 1 50); do pgrep -x TinyRemote >/dev/null || break; sleep 0.1; done  # let it quit before relaunching
 mkdir -p "$DEST"
 rm -rf "$DEST/TinyRemote.app"
 ditto -x -k "$TMP/TinyRemote.zip" "$DEST"
