@@ -1,5 +1,5 @@
 // Draws the README artwork in light and dark variants: docs/banner*.png, docs/remote-map*.png and
-// docs/social-preview.png. Run from the repo root after tools/make-icon.swift: swift tools/make-readme-art.swift
+// docs/social-preview.jpg. Run from the repo root after tools/make-icon.swift: swift tools/make-readme-art.swift
 import AppKit
 
 let root = FileManager.default.currentDirectoryPath
@@ -9,8 +9,7 @@ func color(_ hex: UInt32, _ alpha: CGFloat = 1) -> NSColor {
 }
 
 /// Renders at 2x into a PNG. Drawing code uses top-left coordinates in points.
-func render(_ width: CGFloat, _ height: CGFloat, to path: String, _ draw: (_ flip: (NSRect) -> NSRect) -> Void) {
-    let scale: CGFloat = 2
+func render(_ width: CGFloat, _ height: CGFloat, to path: String, scale: CGFloat = 2, _ draw: (_ flip: (NSRect) -> NSRect) -> Void) {
     let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(width * scale), pixelsHigh: Int(height * scale), bitsPerSample: 8,
                                samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
     rep.size = NSSize(width: width, height: height)
@@ -18,7 +17,8 @@ func render(_ width: CGFloat, _ height: CGFloat, to path: String, _ draw: (_ fli
     NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
     draw { NSRect(x: $0.minX, y: height - $0.maxY, width: $0.width, height: $0.height) }
     NSGraphicsContext.restoreGraphicsState()
-    try! rep.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: "\(root)/\(path)"))
+    let data = path.hasSuffix(".jpg") ? rep.representation(using: .jpeg, properties: [.compressionFactor: 0.9])! : rep.representation(using: .png, properties: [:])!
+    try! data.write(to: URL(fileURLWithPath: "\(root)/\(path)"))
 }
 
 enum Align { case left, center, right }
@@ -68,7 +68,7 @@ banner(width: 1400, height: 440, dark: true, path: "docs/banner-dark.png")
 func socialPreview(path: String) {
     let width: CGFloat = 1280, height: CGFloat = 640
     let logo = NSImage(contentsOfFile: "\(root)/docs/logo.png")!
-    render(width, height, to: path) { flip in
+    render(width, height, to: path, scale: 1) { flip in  // GitHub wants 1280x640 under 1 MB
         let card = NSBezierPath(rect: flip(NSRect(x: 0, y: 0, width: width, height: height)))
         NSGradient(starting: color(0x3B82F6), ending: color(0x1E3A8A))!.draw(in: card, angle: -35)
         NSGradient(starting: color(0xFFFFFF, 0.14), ending: color(0xFFFFFF, 0))!.draw(in: card, angle: -90)
@@ -81,7 +81,7 @@ func socialPreview(path: String) {
              size: 30, color: color(0xFFFFFF, 0.72), align: .center, width: textWidth, height: 46, flip: flip)
     }
 }
-socialPreview(path: "docs/social-preview.png")
+socialPreview(path: "docs/social-preview.jpg")
 
 // MARK: Annotated remote
 
@@ -161,4 +161,4 @@ func remoteMap(dark: Bool, path: String) {
 
 remoteMap(dark: false, path: "docs/remote-map.png")
 remoteMap(dark: true, path: "docs/remote-map-dark.png")
-print("wrote docs/banner*.png, docs/remote-map*.png, docs/social-preview.png")
+print("wrote docs/banner*.png, docs/remote-map*.png, docs/social-preview.jpg")

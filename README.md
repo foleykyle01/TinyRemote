@@ -193,7 +193,7 @@ No Xcode project and no dependencies, just `swiftc`.
 ~/Applications/TinyRemote.app/Contents/MacOS/TinyRemote --self-test
 ~/Applications/TinyRemote.app/Contents/MacOS/TinyRemote --snapshot /tmp/shots   # render every settings page to PNG
 swift tools/make-icon.swift             # app icon (Resources/AppIcon.icon) and README logos; needs Xcode
-swift tools/make-readme-art.swift       # README banner, remote map and social preview
+swift tools/make-readme-art.swift       # README banner, remote map and social preview (docs/social-preview.jpg)
 ./release.sh 0.6.0 "What changed"       # maintainers: bump, build, tag and publish a release
 ```
 
