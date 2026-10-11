@@ -52,21 +52,21 @@ Every one of these is a default you can change.
 <table>
   <tr>
     <td width="50%" valign="top">
-      <h3>🎛️ Remap every button</h3>
+      <h3>Remap every button</h3>
       Press, release and long press for each button, each with its own hold time. Pick a preset, capture any shortcut (even reserved ones like ⌃→ and ⌘Space), or run an AppleScript.
     </td>
     <td width="50%" valign="top">
-      <h3>🌐 App-aware</h3>
+      <h3>App-aware</h3>
       Profiles change buttons per app. A built-in browser profile makes Back go back a page, but it stays Delete while you're typing in a text field. Create profiles for any app.
     </td>
   </tr>
   <tr>
     <td valign="top">
-      <h3>👆 A real trackpad</h3>
+      <h3>A real trackpad</h3>
       Tap to click, hold to right-click, press and slide to drag, and two-finger tap and click. Clicks behave exactly like a real mouse, so double-clicks and selection work in every app.
     </td>
     <td valign="top">
-      <h3>🎙️ Push-to-talk dictation</h3>
+      <h3>Push-to-talk dictation</h3>
       Choose your dictation app and TinyRemote sets up the mic button. It reads FluidVoice's shortcut for you, and supports hold-to-talk or tap-to-toggle.
     </td>
   </tr>
@@ -76,7 +76,7 @@ Every one of these is a default you can change.
       Record, name and test your own shortcuts and AppleScripts once, then put them on any button or gesture.
     </td>
     <td valign="top">
-      <h3>🔁 Recovers on its own</h3>
+      <h3>Recovers on its own</h3>
       Reconnects after sleep, takes the remote back if another app grabs it, and warns you in the menu bar if a permission goes missing.
     </td>
   </tr>
