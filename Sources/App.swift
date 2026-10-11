@@ -24,6 +24,7 @@ struct TinyRemoteApp: App {
         config.buttons[.mute] = Mapping(press: "mute")
         let json = try! JSONEncoder().encode(config)
         assert(String(decoding: json, as: UTF8.self).contains("\"mute\":{"))  // buttons encode as an object
+        assert(String(decoding: json, as: UTF8.self).contains("\"twoFingerTap\":\"right-click\""))
         print("self-test passed")
         exit(0)
     }
@@ -68,7 +69,7 @@ struct MenuContent: View {
             Button("Fix in Setup…") { open(.setup) }
         }
         Divider()
-        Button("Settings…") { open(.remote) }.keyboardShortcut(",")
+        Button("Settings…") { open(.buttons) }.keyboardShortcut(",")
         Button("Reconnect Remote") { remote.reconnect() }
         Button("Check for Updates") { updater.check(install: true) }
         if !updater.status.isEmpty { Text(updater.status) }

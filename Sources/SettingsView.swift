@@ -1,11 +1,12 @@
 import SwiftUI
 
 enum Pane: String, CaseIterable, Identifiable {
-    case remote = "Remote", shortcuts = "My Shortcuts", general = "General", setup = "Setup"
+    case buttons = "Buttons", touch = "Touch Surface", shortcuts = "My Shortcuts", general = "General", setup = "Setup"
     var id: String { rawValue }
     var icon: String {
         switch self {
-        case .remote: "appletvremote.gen4"
+        case .buttons: "appletvremote.gen4"
+        case .touch: "hand.point.up.left"
         case .shortcuts: "command"
         case .general: "gearshape"
         case .setup: "checkmark.shield"
@@ -16,7 +17,7 @@ enum Pane: String, CaseIterable, Identifiable {
 /// Shared so the menu bar can open a specific pane.
 final class Navigation: ObservableObject {
     static let shared = Navigation()
-    @Published var pane: Pane? = Permissions.allGranted ? .remote : .setup
+    @Published var pane: Pane? = Permissions.allGranted ? .buttons : .setup
 }
 
 struct SettingsView: View {
@@ -27,8 +28,9 @@ struct SettingsView: View {
             List(Pane.allCases, selection: $navigation.pane) { Label($0.rawValue, systemImage: $0.icon).tag($0) }
                 .navigationSplitViewColumnWidth(170)
         } detail: {
-            switch navigation.pane ?? .remote {
-            case .remote: RemotePane()
+            switch navigation.pane ?? .buttons {
+            case .buttons: ButtonsPane()
+            case .touch: TouchPane()
             case .shortcuts: ShortcutsPane()
             case .general: GeneralPane()
             case .setup: SetupPane()
@@ -57,33 +59,66 @@ struct Card<Content: View>: View {
     }
 }
 
-struct RemotePane: View {
+struct ButtonsPane: View {
     @ObservedObject private var remote = Remote.shared
     @State private var selected = RemoteButton.tv
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Card(title: "Pointer") {
-                    toggleRow("Move the cursor with the touch surface", $remote.config.trackpadEnabled)
-                    speedRow("Cursor speed", $remote.config.cursorSpeed)
-                    toggleRow("Tap to click", $remote.config.tapToClick)
-                    toggleRow("Circle the outer ring to scroll", $remote.config.ringScrollEnabled)
-                    speedRow("Scroll speed", $remote.config.scrollSpeed)
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Choose a button on the drawing, or press it on your remote.")
+                    .foregroundStyle(.secondary)
+                HStack(alignment: .top, spacing: 36) {
+                    RemoteDrawing(selected: $selected)
+                    ButtonEditor(button: $selected)
                 }
-                Card(title: "Button bindings") {
-                    HStack(alignment: .top, spacing: 36) {
-                        RemoteDrawing(selected: $selected)
-                        ButtonEditor(button: $selected)
+                .padding(20)
+                .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+            }
+            .padding(24)
+        }
+        .navigationTitle("Buttons")
+        .onChange(of: remote.lastButton) { if let button = remote.lastButton { selected = button } }
+    }
+}
+
+struct TouchPane: View {
+    @ObservedObject private var remote = Remote.shared
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                Card(title: "Cursor") {
+                    toggleRow("Move the cursor with one finger", $remote.config.trackpadEnabled)
+                    speedRow("Speed", $remote.config.cursorSpeed).disabled(!remote.config.trackpadEnabled)
+                }
+                Card(title: "Gestures") {
+                    ForEach(Gesture.allCases) { gesture in
+                        HStack(alignment: .top, spacing: 14) {
+                            Image(systemName: gesture.icon).font(.title2).frame(width: 30)
+                            VStack(alignment: .leading, spacing: 8) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(gesture.title)
+                                    Text(gesture.detail).font(.callout).foregroundStyle(.secondary)
+                                }
+                                ActionField(action: Binding(get: { remote.config.gestures[gesture] ?? "" },
+                                                            set: { remote.config.gestures[gesture] = $0 }),
+                                            defaultAction: Config.defaultGestures[gesture] ?? "")
+                            }
+                        }
+                        if gesture != Gesture.allCases.last { Divider() }
                     }
-                    Text("Click a button on the drawing or press it on your remote. Two fingers on the touch surface also scroll.")
-                        .font(.callout).foregroundStyle(.secondary)
+                }
+                Card(title: "Scrolling") {
+                    toggleRow("Swipe with two fingers", $remote.config.twoFingerScrollEnabled)
+                    toggleRow("Circle the outer ring (like an iPod)", $remote.config.ringScrollEnabled)
+                    speedRow("Speed", $remote.config.scrollSpeed)
+                        .disabled(!remote.config.twoFingerScrollEnabled && !remote.config.ringScrollEnabled)
                 }
             }
             .padding(24)
         }
-        .navigationTitle("Remote")
-        .onChange(of: remote.lastButton) { if let button = remote.lastButton { selected = button } }
+        .navigationTitle("Touch Surface")
     }
 
     private func toggleRow(_ title: String, _ isOn: Binding<Bool>) -> some View {
@@ -93,7 +128,7 @@ struct RemotePane: View {
 
     private func speedRow(_ title: String, _ value: Binding<Double>) -> some View {
         HStack(spacing: 12) {
-            Text(title).frame(width: 110, alignment: .leading)
+            Text(title).frame(width: 60, alignment: .leading)
             Slider(value: value, in: 0.3...3)
             Text(String(format: "%.2fx", value.wrappedValue)).monospacedDigit().foregroundStyle(.secondary).frame(width: 48, alignment: .trailing)
         }
@@ -280,6 +315,7 @@ struct ActionField: View {
         }
         .labelStyle(.titleAndIcon)
         .buttonStyle(.borderless)
+        .fixedSize()
     }
 }
 

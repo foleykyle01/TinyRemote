@@ -45,6 +45,36 @@ enum RemoteButton: String, Codable, CodingKeyRepresentable, CaseIterable, Identi
     var repeatsWhileHeld: Bool { [.up, .down, .left, .right].contains(self) }
 }
 
+/// Touch-surface gestures that run an action, mapped like buttons.
+enum Gesture: String, Codable, CodingKeyRepresentable, CaseIterable, Identifiable {
+    case tap, twoFingerTap, twoFingerClick
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .tap: "Tap"
+        case .twoFingerTap: "Two-finger tap"
+        case .twoFingerClick: "Two-finger click"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .tap: "A quick touch with one finger."
+        case .twoFingerTap: "A quick touch with two fingers."
+        case .twoFingerClick: "Press the clickpad while two fingers rest on it."
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .tap: "hand.tap"
+        case .twoFingerTap: "hand.tap.fill"
+        case .twoFingerClick: "hand.point.up.left.and.text"
+        }
+    }
+}
+
 /// An action is a string: a shortcut like "ctrl+right", a named action (see Actions.swift), or
 /// "custom:<id>" for one of the user's saved shortcuts. Empty string means nothing.
 struct Mapping: Codable, Equatable {
@@ -69,12 +99,15 @@ struct Config: Codable, Equatable {
     var buttons: [RemoteButton: Mapping] = Config.defaultButtons
     var longPressMs = 500.0
     var trackpadEnabled = true
-    var tapToClick = true
+    var gestures: [Gesture: String] = Config.defaultGestures
+    var twoFingerScrollEnabled = true
     var cursorSpeed = 1.0
     var ringScrollEnabled = true
     var scrollSpeed = 1.0
     var autoUpdate = true
     var customActions: [CustomAction] = []
+
+    static let defaultGestures: [Gesture: String] = [.tap: "left-click", .twoFingerTap: "right-click", .twoFingerClick: "right-click"]
 
     static let defaultButtons: [RemoteButton: Mapping] = [
         .up: Mapping(press: "up"),
@@ -106,8 +139,14 @@ struct Config: Codable, Equatable {
               let defaults = (try? JSONEncoder().encode(Config())).flatMap({ try? JSONSerialization.jsonObject(with: $0) }) as? [String: Any]
         else { return Config() }
         var merged = defaults.merging(saved) { _, new in new }
-        if let savedButtons = saved["buttons"] as? [String: Any], let defaultButtons = defaults["buttons"] as? [String: Any] {
-            merged["buttons"] = defaultButtons.merging(savedButtons) { _, new in new }
+        // Also layer keyed groups (buttons, gestures) so new entries get their defaults.
+        for (key, value) in defaults {
+            if let defaultGroup = value as? [String: Any], let savedGroup = saved[key] as? [String: Any] {
+                merged[key] = defaultGroup.merging(savedGroup) { _, new in new }
+            }
+        }
+        if saved["tapToClick"] as? Bool == false, (saved["gestures"] as? [String: Any])?["tap"] == nil {
+            merged["gestures"] = (merged["gestures"] as? [String: Any] ?? [:]).merging(["tap": ""]) { _, new in new }  // pre-0.2 setting
         }
         return (try? JSONSerialization.data(withJSONObject: merged)).flatMap { try? JSONDecoder().decode(Config.self, from: $0) } ?? Config()
     }

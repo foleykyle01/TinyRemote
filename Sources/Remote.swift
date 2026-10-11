@@ -29,6 +29,8 @@ final class Remote: ObservableObject {
     private var healthTimer: Timer?
 
     private struct Hold {
+        /// The mapping the press started with, so release matches it (e.g. a two-finger click).
+        var mapping = Mapping()
         var clickHeld = false
         var longPressFired = false
         var timers: [Timer] = []
@@ -104,7 +106,7 @@ final class Remote: ObservableObject {
     func releaseAll() {
         for (button, hold) in holds {
             hold.timers.forEach { $0.invalidate() }
-            if hold.clickHeld { Actions.perform(config.buttons[button]?.press ?? "", down: false) }
+            if hold.clickHeld { Actions.perform(hold.mapping.press, down: false) }
         }
         holds.removeAll()
         touchMode = .none
@@ -122,14 +124,18 @@ final class Remote: ObservableObject {
     // MARK: Buttons
 
     private func button(_ button: RemoteButton, down: Bool) {
-        let binding = config.buttons[button] ?? Mapping()
+        var binding = holds[button]?.mapping ?? config.buttons[button] ?? Mapping()
+        // Clicking with two fingers resting on the pad is its own gesture (right click by default).
+        if down, button == .select, fingerCount >= 2, let action = config.gestures[.twoFingerClick], !action.isEmpty {
+            binding = Mapping(press: action)
+        }
         log("\(button) \(down ? "down" : "up")")
         lastInputAt = Date()
         cursorFrozenUntil = Date().addingTimeInterval(0.15)  // pressing buttons nudges the finger on the pad
         if down {
             lastButton = button
             buttonDuringTouch = true
-            var hold = Hold()
+            var hold = Hold(mapping: binding)
             if !binding.longPress.isEmpty {
                 let delay = (binding.longPressMs ?? config.longPressMs) / 1000
                 hold.timers.append(.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
@@ -171,6 +177,8 @@ final class Remote: ObservableObject {
     private var touchStart = Date()
     private var touchTravel = 0.0
     private var buttonDuringTouch = false
+    private var fingerCount = 0
+    private var maxFingers = 0
     private var cursorFrozenUntil = Date.distantPast
     /// Finger travel since the click went down; pressing the clickpad nudges the finger, so ignore small moves.
     private var dragTravel = 0.0
@@ -178,22 +186,31 @@ final class Remote: ObservableObject {
 
     /// `points` are touching fingers in normalized pad coordinates (origin bottom-left); empty on lift.
     private func touch(_ points: [CGPoint]) {
+        fingerCount = points.count
         guard config.trackpadEnabled else { touchMode = .none; return }
         guard let first = points.first else {
-            // A quick, still touch in the middle is a tap; skip it if a button was physically pressed.
-            if touchMode == .cursor, config.tapToClick, !buttonDuringTouch,
-               Date().timeIntervalSince(touchStart) < 0.25, touchTravel < 0.04 {
-                Actions.tap("left-click")
+            // A quick, still touch is a tap; skip it if a button was physically pressed meanwhile.
+            let isTap = !buttonDuringTouch && Date().timeIntervalSince(touchStart) < 0.3 && touchTravel < 0.05
+            if isTap && maxFingers >= 2 {
+                Actions.tap(config.gestures[.twoFingerTap] ?? "")
+            } else if isTap && touchMode == .cursor {
+                Actions.tap(config.gestures[.tap] ?? "")
             }
             touchMode = .none
             return
         }
+        maxFingers = max(maxFingers, points.count)
         lastInputAt = Date()
         // Two fingers scroll in both directions; stay in scroll mode until all fingers lift.
         let point = points.count >= 2 ? CGPoint(x: (points[0].x + points[1].x) / 2, y: (points[0].y + points[1].y) / 2) : first
         let angle = atan2(point.y - 0.5, point.x - 0.5)
         defer { lastPoint = point; lastAngle = angle }
         if points.count >= 2 && touchMode != .twoFingerScroll {
+            if touchMode == .none {  // both fingers landed together
+                touchStart = Date()
+                touchTravel = 0
+                buttonDuringTouch = false
+            }
             touchMode = .twoFingerScroll
             scrollRemainder = .zero
             return
@@ -206,6 +223,7 @@ final class Remote: ObservableObject {
             touchStart = Date()
             touchTravel = 0
             buttonDuringTouch = false
+            maxFingers = points.count
             return
         }
         let dx = point.x - lastPoint.x, dy = lastPoint.y - point.y
@@ -226,6 +244,8 @@ final class Remote: ObservableObject {
             scroll(by: CGVector(dx: 0, dy: delta * 400))  // clockwise scrolls down
         case .twoFingerScroll:
             if points.count < 2 { return }  // one finger lifted first; don't jump
+            touchTravel += hypot(dx, dy)
+            guard config.twoFingerScrollEnabled, touchTravel > 0.02 else { return }  // still might be a tap
             scroll(by: CGVector(dx: dx * 1500, dy: -dy * 1500))  // content follows the fingers
         case .none: break
         }
