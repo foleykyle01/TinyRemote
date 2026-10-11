@@ -114,7 +114,7 @@ struct Config: Codable, Equatable {
         .down: Mapping(press: "down"),
         .left: Mapping(press: "left"),
         .right: Mapping(press: "right"),
-        .select: Mapping(press: "left-click"),
+        .select: Mapping(press: "left-click", longPress: "right-click"),
         .back: Mapping(press: "delete"),
         .tv: Mapping(press: "return", longPress: "right-click"),
         .playPause: Mapping(press: "play-pause"),

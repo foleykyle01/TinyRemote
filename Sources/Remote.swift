@@ -32,6 +32,8 @@ final class Remote: ObservableObject {
         /// The mapping the press started with, so release matches it (e.g. a two-finger click).
         var mapping = Mapping()
         var clickHeld = false
+        /// A click with a long press set waits: release = click, move = drag, hold still = long press.
+        var pendingClick = false
         var longPressFired = false
         var timers: [Timer] = []
     }
@@ -136,16 +138,18 @@ final class Remote: ObservableObject {
             lastButton = button
             buttonDuringTouch = true
             var hold = Hold(mapping: binding)
+            if binding.press.hasSuffix("-click") { dragTravel = 0 }
             if !binding.longPress.isEmpty {
+                hold.pendingClick = binding.press.hasSuffix("-click")
                 let delay = (binding.longPressMs ?? config.longPressMs) / 1000
                 hold.timers.append(.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
                     self?.holds[button]?.longPressFired = true
+                    self?.holds[button]?.pendingClick = false
                     Actions.tap(binding.longPress)
                 })
             } else if binding.press.hasSuffix("-click") {
                 Actions.perform(binding.press, down: true)  // held so the trackpad can drag
                 hold.clickHeld = true
-                dragTravel = 0
             } else {
                 Actions.tap(binding.press)
                 if button.repeatsWhileHeld && Actions.parseShortcut(binding.press) != nil {
@@ -231,9 +235,11 @@ final class Remote: ObservableObject {
         case .cursor:
             touchTravel += hypot(dx, dy)
             if Date() < cursorFrozenUntil { return }
-            if Actions.leftButtonDown {
+            let pending = holds.first { $0.value.pendingClick }?.key
+            if Actions.leftButtonDown || pending != nil {
                 dragTravel += hypot(dx, dy)
                 if dragTravel < dragDeadZone { return }
+                if let pending { startDrag(pending) }
             }
             // ponytail: fixed accel curve; tune or make it a setting if it feels off.
             let gain = 900 * config.cursorSpeed * (1 + min(hypot(dx, dy) * 40, 3))
@@ -249,6 +255,17 @@ final class Remote: ObservableObject {
             scroll(by: CGVector(dx: dx * 1500, dy: -dy * 1500))  // content follows the fingers
         case .none: break
         }
+    }
+
+    /// The finger moved while a pending click was held: it's a drag, so press the button now.
+    private func startDrag(_ button: RemoteButton) {
+        guard var hold = holds[button] else { return }
+        hold.timers.forEach { $0.invalidate() }
+        hold.timers = []
+        hold.pendingClick = false
+        hold.clickHeld = true
+        holds[button] = hold
+        Actions.perform(hold.mapping.press, down: true)
     }
 
     private func scroll(by delta: CGVector) {
