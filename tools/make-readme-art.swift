@@ -21,16 +21,25 @@ func render(_ width: CGFloat, _ height: CGFloat, to path: String, _ draw: (_ fli
     try! rep.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: "\(root)/\(path)"))
 }
 
+enum Align { case left, center, right }
+
+/// Draws one block of text, shrinking the font until the widest line fits `width`.
 func text(_ string: String, _ point: NSPoint, size: CGFloat, weight: NSFont.Weight = .regular, color textColor: NSColor,
-          alignRight: Bool = false, width: CGFloat = 1000, height: CGFloat, flip: (NSRect) -> NSRect) {
+          align: Align = .left, width: CGFloat = 1000, height: CGFloat, flip: (NSRect) -> NSRect) {
     let style = NSMutableParagraphStyle()
-    style.alignment = alignRight ? .right : .left
+    style.alignment = align == .left ? .left : align == .center ? .center : .right
     style.lineSpacing = 2
-    let attributed = NSAttributedString(string: string, attributes: [
-        .font: NSFont.systemFont(ofSize: size, weight: weight), .foregroundColor: textColor, .paragraphStyle: style,
-    ])
-    let x = alignRight ? point.x - width : point.x
-    attributed.draw(with: flip(NSRect(x: x, y: point.y, width: width, height: height)), options: [.usesLineFragmentOrigin])
+    var fontSize = size
+    func attributed() -> NSAttributedString {
+        NSAttributedString(string: string, attributes: [
+            .font: NSFont.systemFont(ofSize: fontSize, weight: weight), .foregroundColor: textColor, .paragraphStyle: style,
+        ])
+    }
+    while fontSize > 8, string.split(separator: "\n").contains(where: {
+        NSAttributedString(string: String($0), attributes: [.font: NSFont.systemFont(ofSize: fontSize, weight: weight)]).size().width > width
+    }) { fontSize -= 1 }
+    let x = align == .left ? point.x : align == .center ? point.x - width / 2 : point.x - width
+    attributed().draw(with: flip(NSRect(x: x, y: point.y, width: width, height: height)), options: [.usesLineFragmentOrigin])
 }
 
 // MARK: Banner and social preview
@@ -44,17 +53,35 @@ func banner(width: CGFloat, height: CGFloat, dark: Bool, path: String) {
         let iconSize = height * 0.78
         logo.draw(in: flip(NSRect(x: height * 0.12, y: (height - iconSize) / 2, width: iconSize, height: iconSize)))
         let textX = height * 0.12 + iconSize + height * 0.04
-        text("TinyRemote", NSPoint(x: textX, y: height * 0.22), size: height * 0.2, weight: .bold, color: .white, height: height * 0.3, flip: flip)
-        text("Your Siri Remote, made for your Mac.", NSPoint(x: textX, y: height * 0.47), size: height * 0.075, weight: .medium,
-             color: color(0xFFFFFF, 0.92), height: height * 0.12, flip: flip)
-        text("Remap every button · Trackpad · App-aware · Push-to-talk dictation", NSPoint(x: textX, y: height * 0.6),
-             size: height * 0.048, color: color(0xFFFFFF, 0.7), height: height * 0.1, flip: flip)
+        let textWidth = width - textX - height * 0.1
+        text("TinyRemote", NSPoint(x: textX, y: height * 0.26), size: height * 0.2, weight: .bold, color: .white, width: textWidth, height: height * 0.3, flip: flip)
+        text("Your Siri Remote, made for your Mac.", NSPoint(x: textX, y: height * 0.51), size: height * 0.075, weight: .medium,
+             color: color(0xFFFFFF, 0.92), width: textWidth, height: height * 0.12, flip: flip)
+        text("Remap every button · Trackpad · App-aware · Push-to-talk dictation", NSPoint(x: textX, y: height * 0.64),
+             size: height * 0.048, color: color(0xFFFFFF, 0.7), width: textWidth, height: height * 0.1, flip: flip)
     }
 }
 
 banner(width: 1400, height: 440, dark: false, path: "docs/banner.png")
 banner(width: 1400, height: 440, dark: true, path: "docs/banner-dark.png")
-banner(width: 1280, height: 640, dark: false, path: "docs/social-preview.png")
+/// Link-preview card (1280x640): icon above centered text, since a side-by-side layout is too cramped at 2:1.
+func socialPreview(path: String) {
+    let width: CGFloat = 1280, height: CGFloat = 640
+    let logo = NSImage(contentsOfFile: "\(root)/docs/logo.png")!
+    render(width, height, to: path) { flip in
+        let card = NSBezierPath(rect: flip(NSRect(x: 0, y: 0, width: width, height: height)))
+        NSGradient(starting: color(0x3B82F6), ending: color(0x1E3A8A))!.draw(in: card, angle: -35)
+        NSGradient(starting: color(0xFFFFFF, 0.14), ending: color(0xFFFFFF, 0))!.draw(in: card, angle: -90)
+        logo.draw(in: flip(NSRect(x: (width - 300) / 2, y: 30, width: 300, height: 300)))
+        let center = width / 2, textWidth = width - 160
+        text("TinyRemote", NSPoint(x: center, y: 330), size: 104, weight: .bold, color: .white, align: .center, width: textWidth, height: 130, flip: flip)
+        text("Your Siri Remote, made for your Mac.", NSPoint(x: center, y: 462), size: 44, weight: .medium,
+             color: color(0xFFFFFF, 0.92), align: .center, width: textWidth, height: 60, flip: flip)
+        text("Remap every button · Trackpad · App-aware · Push-to-talk dictation", NSPoint(x: center, y: 530),
+             size: 30, color: color(0xFFFFFF, 0.72), align: .center, width: textWidth, height: 46, flip: flip)
+    }
+}
+socialPreview(path: "docs/social-preview.png")
 
 // MARK: Annotated remote
 
@@ -125,10 +152,10 @@ func remoteMap(dark: Bool, path: String) {
             path.stroke()
             circle(anchor.x, anchor.y, 5, color(0x3B82F6))
             let textX: CGFloat = left ? 505 : 885
-            text(title, NSPoint(x: textX, y: labelY), size: 26, weight: .semibold, color: ink, alignRight: left, width: 480, height: 40, flip: flip)
-            text(detail, NSPoint(x: textX, y: labelY + 38), size: 20, color: muted, alignRight: left, width: 480, height: 110, flip: flip)
+            text(title, NSPoint(x: textX, y: labelY), size: 26, weight: .semibold, color: ink, align: left ? .right : .left, width: 480, height: 40, flip: flip)
+            text(detail, NSPoint(x: textX, y: labelY + 38), size: 20, color: muted, align: left ? .right : .left, width: 480, height: 110, flip: flip)
         }
-        text("Defaults · change any of them in Settings", NSPoint(x: 48, y: 950), size: 18, color: muted, alignRight: false, width: W, height: 30, flip: flip)
+        text("Defaults · change any of them in Settings", NSPoint(x: 48, y: 950), size: 18, color: muted, width: W, height: 30, flip: flip)
     }
 }
 
