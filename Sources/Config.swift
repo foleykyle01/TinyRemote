@@ -116,7 +116,6 @@ struct Config: Codable, Equatable {
     var ringScrollEnabled = true
     var scrollSpeed = 1.0
     var autoUpdate = true
-    var showMenuBarIcon = true
     var showInDock = false
     var customActions: [CustomAction] = []
     var voice = VoiceSettings()

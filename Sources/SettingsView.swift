@@ -617,18 +617,19 @@ struct ShortcutsPane: View {
 struct GeneralPane: View {
     @ObservedObject private var remote = Remote.shared
     @ObservedObject private var updater = Updater.shared
+    @AppStorage(StatusItem.defaultsKey) private var showMenuBarIcon = true
     @State private var openAtLogin = LoginItem.enabled
 
     var body: some View {
         Form {
             Section {
-                Toggle("Show in the menu bar", isOn: $remote.config.showMenuBarIcon)
+                Toggle("Show in the menu bar", isOn: $showMenuBarIcon)
                 Toggle("Show in the Dock", isOn: $remote.config.showInDock)
                     .onChange(of: remote.config.showInDock) { Dock.apply() }
             } header: {
                 Text("Appearance")
             } footer: {
-                Text(remote.config.showMenuBarIcon || remote.config.showInDock
+                Text(showMenuBarIcon || remote.config.showInDock
                      ? "TinyRemote also shows in the Dock while this window is open."
                      : "With both off, open TinyRemote from Applications or Spotlight to get back to Settings.")
                     .foregroundStyle(.secondary)

@@ -3,7 +3,6 @@ import SwiftUI
 @main
 struct TinyRemoteApp: App {
     @NSApplicationDelegateAdaptor private var delegate: AppDelegate
-    @ObservedObject private var remote = Remote.shared
 
     init() {
         guard CommandLine.arguments.contains("--self-test") else { return }
@@ -44,11 +43,13 @@ struct TinyRemoteApp: App {
     }
 
     var body: some Scene {
-        // Write only on a real change: writing the same value republishes the config and loops the scene update.
-        MenuBarExtra(isInserted: Binding(get: { remote.config.showMenuBarIcon },
-                                         set: { if remote.config.showMenuBarIcon != $0 { remote.config.showMenuBarIcon = $0 } })) {
-            MenuContent()
-        } label: { MenuBarIcon() }
+        // The menu-bar icon is an AppKit StatusItem; SwiftUI just needs a scene. ⌘, opens TinyRemote's own window.
+        Settings { EmptyView() }
+            .commands {
+                CommandGroup(replacing: .appSettings) {
+                    Button("Settings…") { SettingsWindow.show() }.keyboardShortcut(",")
+                }
+            }
     }
 }
 
@@ -60,6 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         LoginItem.enableOnFirstLaunch()
         Remote.shared.start()
         Updater.shared.schedule()
+        StatusItem.shared.start()
         Dock.apply()
         if Onboarding.shouldShow {
             OnboardingWindow.show()
@@ -74,37 +76,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         SettingsWindow.show()
         return false
     }
-}
-
-/// Turns into a warning when the remote can't work (permission lost, disconnected, held by another app).
-struct MenuBarIcon: View {
-    @ObservedObject private var remote = Remote.shared
-    var body: some View {
-        Image(systemName: remote.problems.isEmpty ? "appletvremote.gen4" : "exclamationmark.triangle")
-    }
-}
-
-struct MenuContent: View {
-    @ObservedObject private var remote = Remote.shared
-    @ObservedObject private var updater = Updater.shared
-
-    var body: some View {
-        if remote.problems.isEmpty {
-            Text("Remote ready")
-        } else {
-            ForEach(remote.problems, id: \.self) { Text("⚠︎ \($0)") }
-            Button("Fix in Setup…") { open(.setup) }
-        }
-        Divider()
-        Button("Settings…") { open(.buttons) }.keyboardShortcut(",")
-        Button("Reconnect Remote") { remote.reconnect() }
-        Button("Check for Updates") { updater.check(install: true) }
-        if !updater.status.isEmpty { Text(updater.status) }
-        Divider()
-        Button("Quit TinyRemote") { NSApp.terminate(nil) }.keyboardShortcut("q")
-    }
-
-    private func open(_ pane: Pane) { SettingsWindow.show(pane) }
 }
 
 /// The settings window, managed directly so it can be opened from the menu bar, on reopen, and at first launch.
