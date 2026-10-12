@@ -131,6 +131,7 @@ extension AppDelegate {
         try? FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
         let pages: [(String, AnyView, NSSize)] = Pane.allCases.map { ($0.rawValue, AnyView(SettingsView()), NSSize(width: 980, height: 820)) }
             + OnboardingView.Step.allCases.map { ("Onboarding \($0.rawValue + 1)", AnyView(OnboardingView(fixedStep: $0)), NSSize(width: 600, height: 540)) }
+            + [("Permission helper", AnyView(PermissionHelperView(kind: .inputMonitoring, done: {}, preview: true)), NSSize(width: 320, height: 250))]
         for (name, view, size) in pages {
             if let pane = Pane(rawValue: name) { Navigation.shared.pane = pane }
             let window = NSWindow(contentRect: NSRect(origin: NSPoint(x: -20000, y: 0), size: size), styleMask: [.titled], backing: .buffered, defer: false)

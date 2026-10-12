@@ -7,13 +7,18 @@ enum Permissions {
     static var accessibility: Bool { AXIsProcessTrusted() }
     static var allGranted: Bool { inputMonitoring && accessibility }
 
+    /// Asking first usually adds TinyRemote to the list; the helper panel covers the times it doesn't.
     static func requestInputMonitoring() {
-        if !IOHIDRequestAccess(kIOHIDRequestTypeListenEvent) { openPane("Privacy_ListenEvent") }
+        guard !IOHIDRequestAccess(kIOHIDRequestTypeListenEvent) else { return }
+        openPane("Privacy_ListenEvent")
+        PermissionHelper.show(.inputMonitoring)
     }
 
     static func requestAccessibility() {
         let prompt = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
-        if !AXIsProcessTrustedWithOptions(prompt) { openPane("Privacy_Accessibility") }
+        guard !AXIsProcessTrustedWithOptions(prompt) else { return }
+        openPane("Privacy_Accessibility")
+        PermissionHelper.show(.accessibility)
     }
 
     static func openPane(_ anchor: String) {
