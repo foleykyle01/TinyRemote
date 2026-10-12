@@ -9,7 +9,7 @@
 	<key>CFBundleIconName</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.kylefoley.tinyremote</string>
+	<string>com.kylefoley.tinyremote.app</string>
 	<key>CFBundleName</key>
 	<string>TinyRemote</string>
 	<key>CFBundlePackageType</key>

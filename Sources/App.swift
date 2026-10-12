@@ -58,6 +58,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let index = CommandLine.arguments.firstIndex(of: "--snapshot") { return snapshot(to: CommandLine.arguments[index + 1]) }
         freopen(NSHomeDirectory() + "/Library/Logs/TinyRemote.log", "a", stderr)
         log("TinyRemote \(Updater.shared.current) started")
+        LegacyMigration.run()
         LoginItem.enableOnFirstLaunch()
         Remote.shared.start()
         Updater.shared.schedule()

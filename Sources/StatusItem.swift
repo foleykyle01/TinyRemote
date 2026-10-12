@@ -3,7 +3,7 @@ import Combine
 
 /// The menu-bar icon, built with AppKit rather than SwiftUI's MenuBarExtra. macOS remembers a removed menu-bar
 /// item as hidden and MenuBarExtra can't override that, so "Show in the menu bar" did nothing once turned off.
-/// `NSStatusItem.isVisible` is the supported way to bring it back. Follows the `showMenuBarIcon` default.
+/// Follows the `showMenuBarIcon` default.
 final class StatusItem: NSObject, NSMenuDelegate {
     static let shared = StatusItem()
     static let defaultsKey = "showMenuBarIcon"
@@ -25,8 +25,10 @@ final class StatusItem: NSObject, NSMenuDelegate {
             .store(in: &observers)
     }
 
+    /// Hiding removes the item and showing creates a fresh one, rather than toggling `isVisible`, so macOS is
+    /// never asked to remember a "hidden" state for TinyRemote's icon.
     private func apply() {
-        if item == nil && shouldShow {
+        if shouldShow, item == nil {
             let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
             item.autosaveName = "TinyRemote"
             let menu = NSMenu()
@@ -34,8 +36,10 @@ final class StatusItem: NSObject, NSMenuDelegate {
             item.menu = menu
             self.item = item
             updateIcon(Remote.shared.problems)
+        } else if !shouldShow, let item {
+            NSStatusBar.system.removeStatusItem(item)
+            self.item = nil
         }
-        if let item, item.isVisible != shouldShow { item.isVisible = shouldShow }
     }
 
     private func updateIcon(_ problems: [String]) {

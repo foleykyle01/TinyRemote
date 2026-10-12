@@ -21,6 +21,23 @@ enum Permissions {
     }
 }
 
+/// 0.6.3 moved from com.kylefoley.tinyremote to com.kylefoley.tinyremote.app: macOS kept a stuck "don't draw"
+/// record for the old ID's menu-bar icon that no app or setting could clear. Carries the few app-level
+/// preferences across once; mappings live in the config file and are unaffected.
+enum LegacyMigration {
+    static let oldID = "com.kylefoley.tinyremote"
+
+    static func run() {
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: "migratedLegacyDefaults"), let old = UserDefaults(suiteName: oldID) else { return }
+        for key in ["onboardingComplete", "showMenuBarIcon", "loginItemConfigured"] {
+            if let value = old.object(forKey: key) { defaults.set(value, forKey: key) }
+        }
+        if old.bool(forKey: "loginItemConfigured") { LoginItem.enabled = true }  // login items are per ID; register the new one
+        defaults.set(true, forKey: "migratedLegacyDefaults")
+    }
+}
+
 enum LoginItem {
     static var enabled: Bool {
         get { SMAppService.mainApp.status == .enabled }
