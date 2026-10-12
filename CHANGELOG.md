@@ -2,6 +2,11 @@
 
 Every TinyRemote release. Downloads for each version are on the [releases page](https://github.com/foleykyle01/TinyRemote/releases).
 
+## 0.6.3 (2026-10-12)
+
+- Fixed: the menu-bar icon could disappear for good after being hidden. TinyRemote now hides it by removing it, and creates a fresh one when you turn it back on.
+- TinyRemote has a new app ID, so macOS asks for **Input Monitoring** and **Accessibility** once more after this update. The Setup page walks you through it. Your mappings and settings carry over.
+
 ## 0.6.2 (2026-10-12)
 
 - **Show in the menu bar** now takes effect instantly when you turn it back on. Before, macOS remembered the icon as hidden and kept it away.
