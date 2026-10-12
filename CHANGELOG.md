@@ -2,6 +2,10 @@
 
 Every TinyRemote release. Downloads for each version are on the [releases page](https://github.com/foleykyle01/TinyRemote/releases).
 
+## 0.6.2 (2026-10-12)
+
+- **Show in the menu bar** now takes effect instantly when you turn it back on. Before, macOS remembered the icon as hidden and kept it away.
+
 ## 0.6.1 (2026-10-11)
 
 - The app and docs now call it the Apple TV Remote
