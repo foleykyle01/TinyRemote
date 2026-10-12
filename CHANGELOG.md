@@ -2,6 +2,10 @@
 
 Every TinyRemote release. Downloads for each version are on the [releases page](https://github.com/foleykyle01/TinyRemote/releases).
 
+## 0.6.4 (2026-10-12)
+
+- **Grant…** for Input Monitoring or Accessibility now shows a small floating panel next to System Settings with TinyRemote's icon to drag into the list, for when macOS doesn't add it on its own. The panel confirms once the permission is on and offers the restart Input Monitoring needs.
+
 ## 0.6.3 (2026-10-12)
 
 - Fixed: the menu-bar icon could disappear for good after being hidden. TinyRemote now hides it by removing it, and creates a fresh one when you turn it back on.
